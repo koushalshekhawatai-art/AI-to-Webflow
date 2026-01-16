@@ -1,0 +1,643 @@
+"use client";
+
+import { useState } from "react";
+import { parseCSSToWebflow, extractClassNamesFromCSS } from "@/lib/css-parser";
+import { compileHTMLToNodes } from "@/lib/html-parser";
+import { copyToWebflow, requestClipboardPermission } from "@/lib/clipboard";
+import { copyToWebflowCustom } from "@/lib/clipboard-custom";
+import type { WebflowClipboardData } from "@/types/webflow";
+
+const defaultHTML = `<div class="container">
+  <h1 class="heading">Welcome to Code to Webflow</h1>
+  <p class="description">
+    Convert your HTML and CSS into Webflow's clipboard format.
+  </p>
+  <a href="#" class="button">Get Started</a>
+</div>`;
+
+const defaultCSS = `.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.heading {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 1rem;
+}
+
+.description {
+  font-size: 1.125rem;
+  color: #6b7280;
+  margin-bottom: 2rem;
+}
+
+.button {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  background-color: #3b82f6;
+  color: white;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  font-weight: 600;
+}`;
+
+const defaultJS = `// JavaScript is not currently converted
+// This area is reserved for future functionality
+
+console.log("Webflow conversion ready!");`;
+
+export default function ConverterPage() {
+  const [html, setHtml] = useState(defaultHTML);
+  const [css, setCss] = useState(defaultCSS);
+  const [js, setJs] = useState(defaultJS);
+  const [webflowData, setWebflowData] = useState<WebflowClipboardData | null>(null);
+  const [error, setError] = useState<string>("");
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copying" | "success" | "error">("idle");
+  const [copyMessage, setCopyMessage] = useState<string>("");
+
+  const handleConvertAndCopy = async () => {
+    setCopyStatus("copying");
+    setError("");
+    setCopyMessage("");
+
+    try {
+      // Extract class names from CSS
+      const classNames = extractClassNamesFromCSS(css);
+
+      // Parse CSS and generate UUIDs
+      const { classToIdMap, styles } = parseCSSToWebflow(css, classNames);
+
+      // Compile HTML to nodes
+      const { nodes } = compileHTMLToNodes(html, classToIdMap);
+
+      // Build Webflow clipboard format
+      const data: WebflowClipboardData = {
+        type: "@webflow/XscpData",
+        payload: {
+          nodes,
+          styles,
+          assets: [],
+          ix1: [],
+          ix2: {
+            interactions: [],
+            events: [],
+            actionLists: [],
+          },
+        },
+        meta: {
+          unlinkedSymbolCount: 0,
+          droppedLinks: 0,
+          dynBindRemovedCount: 0,
+          dynListBindRemovedCount: 0,
+          paginationRemovedCount: 0,
+        },
+      };
+
+      setWebflowData(data);
+
+      // Use DataTransfer API via custom copy events
+      // This approach supports application/json MIME type (unlike Chrome's modern Clipboard API)
+      const result = await copyToWebflowCustom(data);
+
+      if (result.success) {
+        setCopyStatus("success");
+        setCopyMessage("✅ Copied to clipboard! Open Webflow Designer and press Cmd+V (Mac) or Ctrl+V (Windows)");
+        setTimeout(() => {
+          setCopyStatus("idle");
+          setCopyMessage("");
+        }, 5000);
+      } else {
+        setCopyStatus("error");
+        setCopyMessage(
+          "❌ " + result.message + ". Try the 'Download JSON' button as an alternative."
+        );
+        setTimeout(() => {
+          setCopyStatus("idle");
+        }, 10000);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Conversion failed");
+      setCopyStatus("error");
+      setCopyMessage("Conversion failed");
+      setTimeout(() => {
+        setCopyStatus("idle");
+        setCopyMessage("");
+      }, 5000);
+    }
+  };
+
+  const handleDownloadJSON = () => {
+    if (!webflowData) return;
+
+    const jsonString = JSON.stringify(webflowData, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "webflow-clipboard.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleRequestPermission = async () => {
+    if (!webflowData) {
+      alert("Please convert your HTML/CSS first!");
+      return;
+    }
+
+    try {
+      // Try to copy with proper MIME type
+      const jsonString = JSON.stringify(webflowData);
+      const blob = new Blob([jsonString], { type: "application/json" });
+      const clipboardItem = new ClipboardItem({
+        "application/json": blob
+      });
+
+      await navigator.clipboard.write([clipboardItem]);
+
+      setCopyStatus("success");
+      setCopyMessage("✅ Permission granted! Copied to clipboard. Now paste in Webflow Designer.");
+      setTimeout(() => {
+        setCopyStatus("idle");
+        setCopyMessage("");
+      }, 5000);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      alert(
+        "❌ Clipboard permission was denied.\n\n" +
+        "To fix this:\n" +
+        "1. Look for a clipboard icon (🔒) in your browser's address bar\n" +
+        "2. Click it and select 'Allow' for clipboard\n" +
+        "3. Try this button again\n\n" +
+        "OR:\n" +
+        "- Use Chrome or Edge browser (best clipboard support)\n" +
+        "- Use the 'Download JSON' button as a workaround\n\n" +
+        "Error: " + errorMessage
+      );
+    }
+  };
+
+  const handleCopyJSON = async () => {
+    if (!webflowData) return;
+
+    try {
+      const jsonString = JSON.stringify(webflowData);
+      await navigator.clipboard.writeText(jsonString);
+      alert("JSON copied as plain text! Note: This won't work directly in Webflow. Use the 'Download JSON' option instead.");
+    } catch (err) {
+      alert("Failed to copy JSON. Please use the Download button instead.");
+    }
+  };
+
+  const handleShowJSON = () => {
+    if (!webflowData) return;
+
+    const jsonString = JSON.stringify(webflowData, null, 2);
+    const newWindow = window.open("", "_blank");
+    if (newWindow) {
+      newWindow.document.write(`
+        <html>
+          <head>
+            <title>Webflow Clipboard JSON</title>
+            <style>
+              body {
+                font-family: monospace;
+                padding: 20px;
+                background: #1e1e1e;
+                color: #d4d4d4;
+              }
+              pre {
+                background: #252526;
+                padding: 20px;
+                border-radius: 8px;
+                overflow: auto;
+              }
+              button {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 10px 20px;
+                background: #0078d4;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-weight: bold;
+              }
+              button:hover {
+                background: #106ebe;
+              }
+            </style>
+          </head>
+          <body>
+            <button onclick="navigator.clipboard.writeText(document.querySelector('pre').textContent).then(() => alert('Copied to clipboard! Now paste in Webflow.')).catch(() => alert('Failed to copy. Please select all (Cmd+A / Ctrl+A) and copy manually (Cmd+C / Ctrl+C)'))">Copy All</button>
+            <h2>Webflow Clipboard JSON</h2>
+            <p><strong>Instructions:</strong></p>
+            <ol>
+              <li>Click the "Copy All" button above (or select all and copy manually)</li>
+              <li>This is plain text, so it WON'T work directly in Webflow</li>
+              <li>Instead, save this as a .json file or use the Download button</li>
+            </ol>
+            <pre>${jsonString.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
+          </body>
+        </html>
+      `);
+    }
+  };
+
+  // Calculate summary statistics
+  const getSummary = () => {
+    if (!webflowData) return null;
+
+    const nodes = webflowData.payload.nodes;
+    const elementNodes = nodes.filter((n: any) => !n.text);
+    const textNodes = nodes.filter((n: any) => n.text);
+    const styles = webflowData.payload.styles;
+
+    return {
+      totalNodes: nodes.length,
+      elementNodes: elementNodes.length,
+      textNodes: textNodes.length,
+      styles: styles.length,
+      classes: styles.map((s) => s.name).join(", "),
+    };
+  };
+
+  const summary = getSummary();
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Header */}
+        <div className="mb-8 text-center">
+          <h1 className="text-4xl font-bold mb-2 text-gray-900">Code to Webflow Converter</h1>
+          <p className="text-gray-600 text-lg">
+            Paste your code, convert, and copy to Webflow Designer
+          </p>
+        </div>
+
+        {/* Main Container */}
+        <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
+          {/* Three Text Areas */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            {/* HTML */}
+            <div className="flex flex-col">
+              <label className="text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide flex items-center gap-2">
+                <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                HTML
+              </label>
+              <textarea
+                value={html}
+                onChange={(e) => setHtml(e.target.value)}
+                className="flex-1 min-h-[400px] p-4 border-2 border-gray-200 rounded-lg font-mono text-sm focus:border-indigo-500 focus:outline-none resize-none"
+                placeholder="Paste your HTML here..."
+                spellCheck={false}
+              />
+            </div>
+
+            {/* CSS */}
+            <div className="flex flex-col">
+              <label className="text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide flex items-center gap-2">
+                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                CSS
+              </label>
+              <textarea
+                value={css}
+                onChange={(e) => setCss(e.target.value)}
+                className="flex-1 min-h-[400px] p-4 border-2 border-gray-200 rounded-lg font-mono text-sm focus:border-indigo-500 focus:outline-none resize-none"
+                placeholder="Paste your CSS here..."
+                spellCheck={false}
+              />
+            </div>
+
+            {/* JavaScript */}
+            <div className="flex flex-col">
+              <label className="text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide flex items-center gap-2">
+                <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                JavaScript
+                <span className="text-xs text-gray-400 font-normal normal-case">(Coming soon)</span>
+              </label>
+              <textarea
+                value={js}
+                onChange={(e) => setJs(e.target.value)}
+                className="flex-1 min-h-[400px] p-4 border-2 border-gray-200 rounded-lg font-mono text-sm bg-gray-50 text-gray-400 resize-none"
+                placeholder="JavaScript support coming soon..."
+                disabled
+                spellCheck={false}
+              />
+            </div>
+          </div>
+
+          {/* Info Message about HTML filtering */}
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <p className="text-sm text-blue-900 font-medium">
+                  <strong>Smart HTML Filtering:</strong> If you paste a full HTML document, we&apos;ll automatically extract only the <code className="bg-blue-100 px-1 rounded">&lt;body&gt;</code> content for you.
+                </p>
+                <p className="text-xs text-blue-700 mt-1">
+                  Document tags like <code className="bg-blue-100 px-1 rounded">&lt;html&gt;</code>, <code className="bg-blue-100 px-1 rounded">&lt;head&gt;</code>, <code className="bg-blue-100 px-1 rounded">&lt;meta&gt;</code>, and <code className="bg-blue-100 px-1 rounded">&lt;script&gt;</code> are filtered out since Webflow Designer only accepts content elements.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Large Convert Button */}
+          <div className="flex justify-center mb-8">
+            <button
+              onClick={handleConvertAndCopy}
+              disabled={copyStatus === "copying" || !html.trim() || !css.trim()}
+              className={`
+                px-12 py-5 rounded-xl font-bold text-lg transition-all transform
+                ${
+                  copyStatus === "copying"
+                    ? "bg-gray-400 cursor-wait scale-95"
+                    : copyStatus === "success"
+                    ? "bg-green-500 scale-100"
+                    : copyStatus === "error"
+                    ? "bg-red-500 scale-95"
+                    : "bg-indigo-600 hover:bg-indigo-700 hover:scale-105 active:scale-95"
+                }
+                text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed
+              `}
+            >
+              {copyStatus === "copying" && (
+                <span className="flex items-center gap-3">
+                  <svg
+                    className="animate-spin h-5 w-5"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Converting & Copying...
+                </span>
+              )}
+              {copyStatus === "success" && (
+                <span className="flex items-center gap-3">
+                  <svg
+                    className="h-6 w-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  Copied to Clipboard!
+                </span>
+              )}
+              {copyStatus === "error" && (
+                <span className="flex items-center gap-3">
+                  <svg
+                    className="h-6 w-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                  Copy Failed
+                </span>
+              )}
+              {copyStatus === "idle" && "Convert & Copy to Webflow"}
+            </button>
+          </div>
+
+          {/* Status Message */}
+          {copyMessage && (
+            <div
+              className={`text-center mb-8 p-4 rounded-lg ${
+                copyStatus === "success"
+                  ? "bg-green-50 text-green-800 border border-green-200"
+                  : "bg-red-50 text-red-800 border border-red-200"
+              }`}
+            >
+              {copyMessage}
+            </div>
+          )}
+
+          {/* Error Display */}
+          {error && (
+            <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg text-center">
+              <p className="text-red-800">
+                <strong>Error:</strong> {error}
+              </p>
+            </div>
+          )}
+
+          {/* Preview/Summary Area */}
+          {summary && (
+            <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl p-6 border-2 border-indigo-100">
+              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <svg
+                  className="w-6 h-6 text-indigo-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                  />
+                </svg>
+                Conversion Summary
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className="text-3xl font-bold text-indigo-600">{summary.totalNodes}</div>
+                  <div className="text-sm text-gray-600 font-medium">Total Nodes</div>
+                </div>
+
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className="text-3xl font-bold text-blue-600">{summary.elementNodes}</div>
+                  <div className="text-sm text-gray-600 font-medium">Element Nodes</div>
+                </div>
+
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className="text-3xl font-bold text-purple-600">{summary.textNodes}</div>
+                  <div className="text-sm text-gray-600 font-medium">Text Nodes</div>
+                </div>
+
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className="text-3xl font-bold text-green-600">{summary.styles}</div>
+                  <div className="text-sm text-gray-600 font-medium">Styles Created</div>
+                </div>
+              </div>
+
+              {summary.classes && (
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className="text-sm font-semibold text-gray-700 mb-2">CSS Classes:</div>
+                  <div className="text-sm text-gray-600 font-mono">{summary.classes}</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Alternative Copy Options */}
+          {summary && (
+            <div className="mt-6 flex flex-wrap gap-3 justify-center">
+              <button
+                onClick={handleDownloadJSON}
+                className="px-6 py-3 bg-gray-700 hover:bg-gray-800 text-white rounded-lg font-semibold transition-all flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                Download JSON
+              </button>
+              <button
+                onClick={handleRequestPermission}
+                className="px-6 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg font-semibold transition-all flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+                  />
+                </svg>
+                Grant Permission & Copy
+              </button>
+              <button
+                onClick={handleConvertAndCopy}
+                className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-all flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                  />
+                </svg>
+                Retry Copy
+              </button>
+            </div>
+          )}
+
+          {/* Instructions */}
+          {copyStatus === "success" && (
+            <div className="mt-6 p-6 bg-blue-50 border-2 border-blue-200 rounded-xl">
+              <h3 className="font-bold text-blue-900 mb-3 text-lg flex items-center gap-2">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                Next Steps: Paste into Webflow
+              </h3>
+              <ol className="list-decimal list-inside space-y-2 text-blue-800">
+                <li>Open your Webflow Designer</li>
+                <li>Click on the canvas where you want to add your elements</li>
+                <li>
+                  Press <kbd className="px-2 py-1 bg-blue-200 rounded font-mono text-sm">Cmd+V</kbd>{" "}
+                  (Mac) or <kbd className="px-2 py-1 bg-blue-200 rounded font-mono text-sm">Ctrl+V</kbd>{" "}
+                  (Windows)
+                </li>
+                <li>Your elements will appear with all styles intact! 🎉</li>
+              </ol>
+            </div>
+          )}
+
+          {/* Clipboard Permission Help */}
+          {copyStatus === "error" && summary && (
+            <div className="mt-6 p-6 bg-yellow-50 border-2 border-yellow-200 rounded-xl">
+              <h3 className="font-bold text-yellow-900 mb-3 text-lg flex items-center gap-2">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+                Clipboard Permission Denied?
+              </h3>
+              <div className="space-y-3 text-yellow-800">
+                <p className="font-semibold">Try these alternatives:</p>
+                <ol className="list-decimal list-inside space-y-2 ml-2">
+                  <li>
+                    <strong>Download JSON:</strong> Click "Download JSON" above, then manually copy the
+                    file contents
+                  </li>
+                  <li>
+                    <strong>Copy as Text:</strong> Click "Copy as Text" to use simple text clipboard
+                    (works in most browsers)
+                  </li>
+                  <li>
+                    <strong>Enable Permissions:</strong> Check your browser settings and allow clipboard
+                    access for this site
+                  </li>
+                  <li>
+                    <strong>Use Chrome/Edge:</strong> These browsers have the best clipboard API support
+                  </li>
+                </ol>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Info Footer */}
+        {!summary && (
+          <div className="text-center text-gray-500 text-sm">
+            <p>Paste your HTML and CSS above, then click the button to convert and copy to clipboard</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

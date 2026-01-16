@@ -1,0 +1,1012 @@
+{
+  "type": "@webflow/XscpData",
+  "payload": {
+    "nodes": [
+      {
+        "_id": "a67aee97-e4d2-4723-9a90-e6ace37ec1ea",
+        "text": true,
+        "v": "MyBrand",
+        "children": []
+      },
+      {
+        "_id": "bdd27881-6dcb-4e3e-8e45-627b08aebc0b",
+        "classes": [
+          "eb8b1385-d880-4b37-bc17-536fbbf8742d"
+        ],
+        "type": "Heading",
+        "tag": "h1",
+        "data": {
+          "attr": {
+            "id": ""
+          },
+          "xattr": [],
+          "text": false,
+          "tag": "h1",
+          "devlink": {
+            "runtimeProps": {},
+            "slot": ""
+          },
+          "displayName": "",
+          "search": {
+            "exclude": false
+          },
+          "visibility": {
+            "conditions": []
+          }
+        },
+        "children": [
+          "a67aee97-e4d2-4723-9a90-e6ace37ec1ea"
+        ]
+      },
+      {
+        "_id": "9a8d8cf4-8347-49cf-823c-113d68f8eb47",
+        "classes": [],
+        "type": "Block",
+        "tag": "div",
+        "data": {
+          "attr": {
+            "id": ""
+          },
+          "xattr": [],
+          "text": false,
+          "tag": "div",
+          "devlink": {
+            "runtimeProps": {},
+            "slot": ""
+          },
+          "displayName": "",
+          "search": {
+            "exclude": false
+          },
+          "visibility": {
+            "conditions": []
+          }
+        },
+        "children": [
+          "bdd27881-6dcb-4e3e-8e45-627b08aebc0b"
+        ]
+      },
+      {
+        "_id": "cafa04e3-e488-49c9-af2e-f4d7a55c8752",
+        "text": true,
+        "v": "Home",
+        "children": []
+      },
+      {
+        "_id": "4c33f6fc-96d6-48de-a8f1-b93453462da6",
+        "classes": [
+          "3a190a1d-3457-4c33-a574-5b0b0648b97b"
+        ],
+        "type": "Link",
+        "tag": "a",
+        "data": {
+          "attr": {
+            "id": "",
+            "href": "/",
+            "target": ""
+          },
+          "xattr": [],
+          "text": false,
+          "tag": "a",
+          "devlink": {
+            "runtimeProps": {},
+            "slot": ""
+          },
+          "displayName": "",
+          "search": {
+            "exclude": false
+          },
+          "visibility": {
+            "conditions": []
+          },
+          "button": false,
+          "block": "",
+          "link": {
+            "mode": "internal",
+            "url": "/"
+          },
+          "eventIds": []
+        },
+        "children": [
+          "cafa04e3-e488-49c9-af2e-f4d7a55c8752"
+        ]
+      },
+      {
+        "_id": "a75c6a11-15c7-4eb8-88fb-bcdddc929118",
+        "text": true,
+        "v": "Features",
+        "children": []
+      },
+      {
+        "_id": "d6126611-2a35-498e-94ea-c349e454de8e",
+        "classes": [
+          "3a190a1d-3457-4c33-a574-5b0b0648b97b"
+        ],
+        "type": "Link",
+        "tag": "a",
+        "data": {
+          "attr": {
+            "id": "",
+            "href": "/features",
+            "target": ""
+          },
+          "xattr": [],
+          "text": false,
+          "tag": "a",
+          "devlink": {
+            "runtimeProps": {},
+            "slot": ""
+          },
+          "displayName": "",
+          "search": {
+            "exclude": false
+          },
+          "visibility": {
+            "conditions": []
+          },
+          "button": false,
+          "block": "",
+          "link": {
+            "mode": "internal",
+            "url": "/features"
+          },
+          "eventIds": []
+        },
+        "children": [
+          "a75c6a11-15c7-4eb8-88fb-bcdddc929118"
+        ]
+      },
+      {
+        "_id": "0c8ce107-16e1-40e9-92a9-4aadaf7b952c",
+        "text": true,
+        "v": "Pricing",
+        "children": []
+      },
+      {
+        "_id": "9a7a0afd-a14c-4699-a0d0-49a5e8b71392",
+        "classes": [
+          "3a190a1d-3457-4c33-a574-5b0b0648b97b"
+        ],
+        "type": "Link",
+        "tag": "a",
+        "data": {
+          "attr": {
+            "id": "",
+            "href": "/pricing",
+            "target": ""
+          },
+          "xattr": [],
+          "text": false,
+          "tag": "a",
+          "devlink": {
+            "runtimeProps": {},
+            "slot": ""
+          },
+          "displayName": "",
+          "search": {
+            "exclude": false
+          },
+          "visibility": {
+            "conditions": []
+          },
+          "button": false,
+          "block": "",
+          "link": {
+            "mode": "internal",
+            "url": "/pricing"
+          },
+          "eventIds": []
+        },
+        "children": [
+          "0c8ce107-16e1-40e9-92a9-4aadaf7b952c"
+        ]
+      },
+      {
+        "_id": "4d0961b9-cb7a-4fac-8cd7-83909c9fbbdb",
+        "text": true,
+        "v": "Contact Us",
+        "children": []
+      },
+      {
+        "_id": "f273c3f4-cf37-4a0b-b034-c6951bce0a37",
+        "classes": [
+          "3a190a1d-3457-4c33-a574-5b0b0648b97b",
+          "76ba06cf-49ba-40ea-bfe8-0e8f8d56bdc0"
+        ],
+        "type": "Link",
+        "tag": "a",
+        "data": {
+          "attr": {
+            "id": "",
+            "href": "/contact",
+            "target": ""
+          },
+          "xattr": [],
+          "text": false,
+          "tag": "a",
+          "devlink": {
+            "runtimeProps": {},
+            "slot": ""
+          },
+          "displayName": "",
+          "search": {
+            "exclude": false
+          },
+          "visibility": {
+            "conditions": []
+          },
+          "button": false,
+          "block": "",
+          "link": {
+            "mode": "internal",
+            "url": "/contact"
+          },
+          "eventIds": []
+        },
+        "children": [
+          "4d0961b9-cb7a-4fac-8cd7-83909c9fbbdb"
+        ]
+      },
+      {
+        "_id": "45dc0a6e-3784-4721-8b85-f1ef21d25c40",
+        "classes": [
+          "778e0f41-11ae-48cc-b5c9-719119315528"
+        ],
+        "type": "Block",
+        "tag": "nav",
+        "data": {
+          "attr": {
+            "id": ""
+          },
+          "xattr": [],
+          "text": false,
+          "tag": "nav",
+          "devlink": {
+            "runtimeProps": {},
+            "slot": ""
+          },
+          "displayName": "",
+          "search": {
+            "exclude": false
+          },
+          "visibility": {
+            "conditions": []
+          }
+        },
+        "children": [
+          "4c33f6fc-96d6-48de-a8f1-b93453462da6",
+          "d6126611-2a35-498e-94ea-c349e454de8e",
+          "9a7a0afd-a14c-4699-a0d0-49a5e8b71392",
+          "f273c3f4-cf37-4a0b-b034-c6951bce0a37"
+        ]
+      },
+      {
+        "_id": "5b1192d2-ee7b-4a38-a988-8d4590b25309",
+        "classes": [
+          "cb52467e-4163-4d94-b1b3-0bcc506444c1"
+        ],
+        "type": "Block",
+        "tag": "div",
+        "data": {
+          "attr": {
+            "id": ""
+          },
+          "xattr": [],
+          "text": false,
+          "tag": "div",
+          "devlink": {
+            "runtimeProps": {},
+            "slot": ""
+          },
+          "displayName": "",
+          "search": {
+            "exclude": false
+          },
+          "visibility": {
+            "conditions": []
+          }
+        },
+        "children": [
+          "9a8d8cf4-8347-49cf-823c-113d68f8eb47",
+          "45dc0a6e-3784-4721-8b85-f1ef21d25c40"
+        ]
+      },
+      {
+        "_id": "be3e4f50-8fa4-4c3a-ac25-6e986eabdce8",
+        "classes": [
+          "078c2697-54de-49b1-b87b-dfb5d2baffe6"
+        ],
+        "type": "Block",
+        "tag": "div",
+        "data": {
+          "attr": {
+            "id": ""
+          },
+          "xattr": [],
+          "text": false,
+          "tag": "div",
+          "devlink": {
+            "runtimeProps": {},
+            "slot": ""
+          },
+          "displayName": "",
+          "search": {
+            "exclude": false
+          },
+          "visibility": {
+            "conditions": []
+          }
+        },
+        "children": [
+          "5b1192d2-ee7b-4a38-a988-8d4590b25309"
+        ]
+      },
+      {
+        "_id": "d89c1417-8cc4-47f8-90a8-8afc43b4c664",
+        "classes": [
+          "d746b5ca-d59c-430c-9e7b-9c2ed30aeb3d"
+        ],
+        "type": "Block",
+        "tag": "header",
+        "data": {
+          "attr": {
+            "id": ""
+          },
+          "xattr": [],
+          "text": false,
+          "tag": "header",
+          "devlink": {
+            "runtimeProps": {},
+            "slot": ""
+          },
+          "displayName": "",
+          "search": {
+            "exclude": false
+          },
+          "visibility": {
+            "conditions": []
+          }
+        },
+        "children": [
+          "be3e4f50-8fa4-4c3a-ac25-6e986eabdce8"
+        ]
+      },
+      {
+        "_id": "46411409-4ef3-460b-9c44-2b7ae665cf59",
+        "text": true,
+        "v": "Transform Your Business Today",
+        "children": []
+      },
+      {
+        "_id": "a29b46de-db3b-4d56-9e5b-41b38b84673b",
+        "classes": [
+          "8e4ffbc2-baa6-48e6-ae6d-f562e60700b3"
+        ],
+        "type": "Heading",
+        "tag": "h1",
+        "data": {
+          "attr": {
+            "id": ""
+          },
+          "xattr": [],
+          "text": false,
+          "tag": "h1",
+          "devlink": {
+            "runtimeProps": {},
+            "slot": ""
+          },
+          "displayName": "",
+          "search": {
+            "exclude": false
+          },
+          "visibility": {
+            "conditions": []
+          }
+        },
+        "children": [
+          "46411409-4ef3-460b-9c44-2b7ae665cf59"
+        ]
+      },
+      {
+        "_id": "12bdad02-9925-4488-8c00-39aea3e539e5",
+        "text": true,
+        "v": "Join thousands of companies using our platform to accelerate growth\n          and achieve their goals faster than ever before.",
+        "children": []
+      },
+      {
+        "_id": "ff4c1490-163d-4d5d-bb0c-7293294d1289",
+        "classes": [
+          "9e11b8e8-b4bd-4da1-915d-3b5f9cbebed8"
+        ],
+        "type": "Paragraph",
+        "tag": "p",
+        "data": {
+          "attr": {
+            "id": ""
+          },
+          "xattr": [],
+          "text": false,
+          "tag": "p",
+          "devlink": {
+            "runtimeProps": {},
+            "slot": ""
+          },
+          "displayName": "",
+          "search": {
+            "exclude": false
+          },
+          "visibility": {
+            "conditions": []
+          }
+        },
+        "children": [
+          "12bdad02-9925-4488-8c00-39aea3e539e5"
+        ]
+      },
+      {
+        "_id": "a4fe327a-2af6-48cb-9539-5e963a05da02",
+        "text": true,
+        "v": "Get Started Free",
+        "children": []
+      },
+      {
+        "_id": "a03ec4bb-3f7d-4b38-81a5-d4ea65ab7c00",
+        "classes": [
+          "0a2621a0-dafb-4e20-8473-61e0600107d9",
+          "c3fa2c86-699f-451e-ac63-4115b70be283"
+        ],
+        "type": "Link",
+        "tag": "a",
+        "data": {
+          "attr": {
+            "id": "",
+            "href": "/signup",
+            "target": ""
+          },
+          "xattr": [],
+          "text": false,
+          "tag": "a",
+          "devlink": {
+            "runtimeProps": {},
+            "slot": ""
+          },
+          "displayName": "",
+          "search": {
+            "exclude": false
+          },
+          "visibility": {
+            "conditions": []
+          },
+          "button": true,
+          "block": "",
+          "link": {
+            "mode": "internal",
+            "url": "/signup"
+          },
+          "eventIds": []
+        },
+        "children": [
+          "a4fe327a-2af6-48cb-9539-5e963a05da02"
+        ]
+      },
+      {
+        "_id": "7a504507-e60d-4ab5-ba21-ae182f9af404",
+        "text": true,
+        "v": "Watch Demo",
+        "children": []
+      },
+      {
+        "_id": "00a1ac97-ac8e-435b-ab6d-8adfd6e20458",
+        "classes": [
+          "0a2621a0-dafb-4e20-8473-61e0600107d9",
+          "a4fb02c7-57d6-4ed2-b959-8287fbdd9649"
+        ],
+        "type": "Link",
+        "tag": "a",
+        "data": {
+          "attr": {
+            "id": "",
+            "href": "/demo",
+            "target": ""
+          },
+          "xattr": [],
+          "text": false,
+          "tag": "a",
+          "devlink": {
+            "runtimeProps": {},
+            "slot": ""
+          },
+          "displayName": "",
+          "search": {
+            "exclude": false
+          },
+          "visibility": {
+            "conditions": []
+          },
+          "button": true,
+          "block": "",
+          "link": {
+            "mode": "internal",
+            "url": "/demo"
+          },
+          "eventIds": []
+        },
+        "children": [
+          "7a504507-e60d-4ab5-ba21-ae182f9af404"
+        ]
+      },
+      {
+        "_id": "6727d124-4e6e-4c11-9bd8-b15f3c629741",
+        "classes": [
+          "cae58a22-74ec-455a-8548-459550367113"
+        ],
+        "type": "Block",
+        "tag": "div",
+        "data": {
+          "attr": {
+            "id": ""
+          },
+          "xattr": [],
+          "text": false,
+          "tag": "div",
+          "devlink": {
+            "runtimeProps": {},
+            "slot": ""
+          },
+          "displayName": "",
+          "search": {
+            "exclude": false
+          },
+          "visibility": {
+            "conditions": []
+          }
+        },
+        "children": [
+          "a03ec4bb-3f7d-4b38-81a5-d4ea65ab7c00",
+          "00a1ac97-ac8e-435b-ab6d-8adfd6e20458"
+        ]
+      },
+      {
+        "_id": "e1da2804-593f-477c-b4fb-761b695093c4",
+        "classes": [
+          "cf2fb60d-5111-4e26-bb3a-568a80154f32"
+        ],
+        "type": "Block",
+        "tag": "div",
+        "data": {
+          "attr": {
+            "id": ""
+          },
+          "xattr": [],
+          "text": false,
+          "tag": "div",
+          "devlink": {
+            "runtimeProps": {},
+            "slot": ""
+          },
+          "displayName": "",
+          "search": {
+            "exclude": false
+          },
+          "visibility": {
+            "conditions": []
+          }
+        },
+        "children": [
+          "a29b46de-db3b-4d56-9e5b-41b38b84673b",
+          "ff4c1490-163d-4d5d-bb0c-7293294d1289",
+          "6727d124-4e6e-4c11-9bd8-b15f3c629741"
+        ]
+      },
+      {
+        "_id": "822ca0a6-3dc7-4b52-af39-784114bbc775",
+        "classes": [
+          "765a62c5-09a4-4590-9db2-2b585fb3422c"
+        ],
+        "type": "Image",
+        "tag": "img",
+        "data": {
+          "attr": {
+            "id": "",
+            "width": "auto",
+            "height": "auto",
+            "alt": "Hero illustration showing product features",
+            "src": "https://example.com/hero-image.jpg",
+            "loading": "lazy"
+          },
+          "xattr": [],
+          "text": false,
+          "tag": "img",
+          "devlink": {
+            "runtimeProps": {},
+            "slot": ""
+          },
+          "displayName": "",
+          "search": {
+            "exclude": false
+          },
+          "visibility": {
+            "conditions": []
+          },
+          "img": {
+            "id": ""
+          },
+          "srcsetDisabled": false,
+          "sizes": []
+        },
+        "children": []
+      },
+      {
+        "_id": "9f78a2e9-ee64-4dc6-a02d-842dbd801184",
+        "classes": [
+          "7f2ebe91-6117-49f0-98dd-bc714100a731"
+        ],
+        "type": "Block",
+        "tag": "div",
+        "data": {
+          "attr": {
+            "id": ""
+          },
+          "xattr": [],
+          "text": false,
+          "tag": "div",
+          "devlink": {
+            "runtimeProps": {},
+            "slot": ""
+          },
+          "displayName": "",
+          "search": {
+            "exclude": false
+          },
+          "visibility": {
+            "conditions": []
+          }
+        },
+        "children": [
+          "822ca0a6-3dc7-4b52-af39-784114bbc775"
+        ]
+      },
+      {
+        "_id": "2793458a-4b0f-4b2b-a3a2-120e7f6c35ea",
+        "classes": [
+          "2bca337a-bc15-43ed-8a49-b8857d537b75"
+        ],
+        "type": "Block",
+        "tag": "div",
+        "data": {
+          "attr": {
+            "id": ""
+          },
+          "xattr": [],
+          "text": false,
+          "tag": "div",
+          "devlink": {
+            "runtimeProps": {},
+            "slot": ""
+          },
+          "displayName": "",
+          "search": {
+            "exclude": false
+          },
+          "visibility": {
+            "conditions": []
+          }
+        },
+        "children": [
+          "e1da2804-593f-477c-b4fb-761b695093c4",
+          "9f78a2e9-ee64-4dc6-a02d-842dbd801184"
+        ]
+      },
+      {
+        "_id": "c8904d9c-0283-4925-805e-8b4923b5da4e",
+        "classes": [
+          "078c2697-54de-49b1-b87b-dfb5d2baffe6"
+        ],
+        "type": "Block",
+        "tag": "div",
+        "data": {
+          "attr": {
+            "id": ""
+          },
+          "xattr": [],
+          "text": false,
+          "tag": "div",
+          "devlink": {
+            "runtimeProps": {},
+            "slot": ""
+          },
+          "displayName": "",
+          "search": {
+            "exclude": false
+          },
+          "visibility": {
+            "conditions": []
+          }
+        },
+        "children": [
+          "2793458a-4b0f-4b2b-a3a2-120e7f6c35ea"
+        ]
+      },
+      {
+        "_id": "20a4a0df-88c3-4cf6-ad0c-e0b79d7a425b",
+        "classes": [
+          "25db5ea8-9b10-4e8a-b8ed-92cc2192e9e2"
+        ],
+        "type": "Section",
+        "tag": "section",
+        "data": {
+          "attr": {
+            "id": ""
+          },
+          "xattr": [],
+          "text": false,
+          "tag": "section",
+          "devlink": {
+            "runtimeProps": {},
+            "slot": ""
+          },
+          "displayName": "",
+          "search": {
+            "exclude": false
+          },
+          "visibility": {
+            "conditions": []
+          }
+        },
+        "children": [
+          "c8904d9c-0283-4925-805e-8b4923b5da4e"
+        ]
+      }
+    ],
+    "styles": [
+      {
+        "_id": "d746b5ca-d59c-430c-9e7b-9c2ed30aeb3d",
+        "fake": false,
+        "type": "class",
+        "name": "header-section",
+        "namespace": "",
+        "comb": "",
+        "styleLess": "background-color: #ffffff; border-bottom: 1px solid #e5e7eb; padding: 1rem 0",
+        "variants": {},
+        "children": [],
+        "origin": null,
+        "selector": null
+      },
+      {
+        "_id": "078c2697-54de-49b1-b87b-dfb5d2baffe6",
+        "fake": false,
+        "type": "class",
+        "name": "container",
+        "namespace": "",
+        "comb": "",
+        "styleLess": "max-width: 1200px; margin-left: auto; margin-right: auto; padding-left: 1rem; padding-right: 1rem",
+        "variants": {},
+        "children": [],
+        "origin": null,
+        "selector": null
+      },
+      {
+        "_id": "cb52467e-4163-4d94-b1b3-0bcc506444c1",
+        "fake": false,
+        "type": "class",
+        "name": "header-content",
+        "namespace": "",
+        "comb": "",
+        "styleLess": "display: flex; justify-content: space-between; align-items: center",
+        "variants": {},
+        "children": [],
+        "origin": null,
+        "selector": null
+      },
+      {
+        "_id": "eb8b1385-d880-4b37-bc17-536fbbf8742d",
+        "fake": false,
+        "type": "class",
+        "name": "site-logo",
+        "namespace": "",
+        "comb": "",
+        "styleLess": "font-size: 1.5rem; font-weight: 700; color: #1f2937; margin: 0",
+        "variants": {},
+        "children": [],
+        "origin": null,
+        "selector": null
+      },
+      {
+        "_id": "778e0f41-11ae-48cc-b5c9-719119315528",
+        "fake": false,
+        "type": "class",
+        "name": "header-nav",
+        "namespace": "",
+        "comb": "",
+        "styleLess": "display: flex; gap: 2rem; align-items: center",
+        "variants": {},
+        "children": [],
+        "origin": null,
+        "selector": null
+      },
+      {
+        "_id": "3a190a1d-3457-4c33-a574-5b0b0648b97b",
+        "fake": false,
+        "type": "class",
+        "name": "nav-link",
+        "namespace": "",
+        "comb": "",
+        "styleLess": "color: #6b7280; text-decoration: none; font-weight: 500; transition: color 0.2s",
+        "variants": {},
+        "children": [],
+        "origin": null,
+        "selector": null
+      },
+      {
+        "_id": "76ba06cf-49ba-40ea-bfe8-0e8f8d56bdc0",
+        "fake": false,
+        "type": "class",
+        "name": "nav-cta",
+        "namespace": "",
+        "comb": "",
+        "styleLess": "background-color: #3b82f6; color: #ffffff; padding: 0.5rem 1.5rem; border-radius: 0.5rem",
+        "variants": {},
+        "children": [],
+        "origin": null,
+        "selector": null
+      },
+      {
+        "_id": "25db5ea8-9b10-4e8a-b8ed-92cc2192e9e2",
+        "fake": false,
+        "type": "class",
+        "name": "hero-section",
+        "namespace": "",
+        "comb": "",
+        "styleLess": "padding-top: 5rem; padding-bottom: 5rem; background: linear-gradient(to bottom, #f9fafb, #ffffff)",
+        "variants": {},
+        "children": [],
+        "origin": null,
+        "selector": null
+      },
+      {
+        "_id": "2bca337a-bc15-43ed-8a49-b8857d537b75",
+        "fake": false,
+        "type": "class",
+        "name": "hero-grid",
+        "namespace": "",
+        "comb": "",
+        "styleLess": "display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center",
+        "variants": {},
+        "children": [],
+        "origin": null,
+        "selector": null
+      },
+      {
+        "_id": "cf2fb60d-5111-4e26-bb3a-568a80154f32",
+        "fake": false,
+        "type": "class",
+        "name": "hero-content",
+        "namespace": "",
+        "comb": "",
+        "styleLess": "display: flex; flex-direction: column; gap: 1.5rem",
+        "variants": {},
+        "children": [],
+        "origin": null,
+        "selector": null
+      },
+      {
+        "_id": "8e4ffbc2-baa6-48e6-ae6d-f562e60700b3",
+        "fake": false,
+        "type": "class",
+        "name": "hero-heading",
+        "namespace": "",
+        "comb": "",
+        "styleLess": "font-size: 3rem; font-weight: 800; line-height: 1.1; color: #111827; margin: 0",
+        "variants": {},
+        "children": [],
+        "origin": null,
+        "selector": null
+      },
+      {
+        "_id": "9e11b8e8-b4bd-4da1-915d-3b5f9cbebed8",
+        "fake": false,
+        "type": "class",
+        "name": "hero-description",
+        "namespace": "",
+        "comb": "",
+        "styleLess": "font-size: 1.25rem; line-height: 1.6; color: #6b7280; margin: 0",
+        "variants": {},
+        "children": [],
+        "origin": null,
+        "selector": null
+      },
+      {
+        "_id": "cae58a22-74ec-455a-8548-459550367113",
+        "fake": false,
+        "type": "class",
+        "name": "button-wrapper",
+        "namespace": "",
+        "comb": "",
+        "styleLess": "display: flex; gap: 1rem; margin-top: 1rem",
+        "variants": {},
+        "children": [],
+        "origin": null,
+        "selector": null
+      },
+      {
+        "_id": "0a2621a0-dafb-4e20-8473-61e0600107d9",
+        "fake": false,
+        "type": "class",
+        "name": "button",
+        "namespace": "",
+        "comb": "",
+        "styleLess": "padding: 0.875rem 2rem; font-weight: 600; font-size: 1rem; border-radius: 0.5rem; text-decoration: none; text-align: center; transition: all 0.2s; display: inline-block",
+        "variants": {},
+        "children": [],
+        "origin": null,
+        "selector": null
+      },
+      {
+        "_id": "c3fa2c86-699f-451e-ac63-4115b70be283",
+        "fake": false,
+        "type": "class",
+        "name": "button-primary",
+        "namespace": "",
+        "comb": "",
+        "styleLess": "background-color: #3b82f6; color: #ffffff; border: 2px solid #3b82f6",
+        "variants": {},
+        "children": [],
+        "origin": null,
+        "selector": null
+      },
+      {
+        "_id": "a4fb02c7-57d6-4ed2-b959-8287fbdd9649",
+        "fake": false,
+        "type": "class",
+        "name": "button-secondary",
+        "namespace": "",
+        "comb": "",
+        "styleLess": "background-color: transparent; color: #3b82f6; border: 2px solid #3b82f6",
+        "variants": {},
+        "children": [],
+        "origin": null,
+        "selector": null
+      },
+      {
+        "_id": "7f2ebe91-6117-49f0-98dd-bc714100a731",
+        "fake": false,
+        "type": "class",
+        "name": "hero-image-wrapper",
+        "namespace": "",
+        "comb": "",
+        "styleLess": "position: relative; overflow: hidden; border-radius: 1rem",
+        "variants": {},
+        "children": [],
+        "origin": null,
+        "selector": null
+      },
+      {
+        "_id": "765a62c5-09a4-4590-9db2-2b585fb3422c",
+        "fake": false,
+        "type": "class",
+        "name": "hero-image",
+        "namespace": "",
+        "comb": "",
+        "styleLess": "width: 100%; height: auto; display: block; object-fit: cover",
+        "variants": {},
+        "children": [],
+        "origin": null,
+        "selector": null
+      }
+    ],
+    "assets": [],
+    "ix1": [],
+    "ix2": {
+      "interactions": [],
+      "events": [],
+      "actionLists": []
+    }
+  },
+  "meta": {
+    "unlinkedSymbolCount": 0,
+    "droppedLinks": 0,
+    "dynBindRemovedCount": 0,
+    "dynListBindRemovedCount": 0,
+    "paginationRemovedCount": 0
+  }
+}
