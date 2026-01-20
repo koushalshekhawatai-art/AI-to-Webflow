@@ -13,10 +13,19 @@
     "demo:clipboard": "tsx scripts/demo-clipboard.ts"
   },
   "dependencies": {
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-separator": "^1.1.8",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-tabs": "^1.1.13",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "htmlparser2": "^10.0.0",
+    "lucide-react": "^0.562.0",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss-animate": "^1.0.7",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
@@ -28,6 +37,7 @@
     "eslint": "^8",
     "eslint-config-next": "^15.1.0",
     "postcss": "^8",
+    "shadcn": "^3.7.0",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.21.0",
     "typescript": "^5"

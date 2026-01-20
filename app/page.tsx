@@ -7,6 +7,16 @@ import { copyToWebflow, requestClipboardPermission } from "@/lib/clipboard";
 import { copyToWebflowCustom } from "@/lib/clipboard-custom";
 import type { WebflowClipboardData } from "@/types/webflow";
 
+// shadcn components
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+
 const defaultHTML = `<div class="container">
   <h1 class="heading">Welcome to Code to Webflow</h1>
   <p class="description">
@@ -369,96 +379,108 @@ export default function ConverterPage() {
         </div>
 
         {/* Main Container */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
-          {/* Three Text Areas */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            {/* HTML */}
-            <div className="flex flex-col">
-              <label className="text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide flex items-center gap-2">
-                <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-                HTML
-              </label>
-              <textarea
-                value={html}
-                onChange={(e) => setHtml(e.target.value)}
-                className="flex-1 min-h-[400px] p-4 border-2 border-gray-200 rounded-lg font-mono text-sm focus:border-indigo-500 focus:outline-none resize-none"
-                placeholder="Paste your HTML here..."
-                spellCheck={false}
-              />
-            </div>
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Input Code</CardTitle>
+            <CardDescription>Paste your HTML, CSS, and JavaScript to convert to Webflow format</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* Code Input Tabs */}
+            <Tabs defaultValue="html" className="mb-6">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="html" className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                  HTML
+                </TabsTrigger>
+                <TabsTrigger value="css" className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                  CSS
+                </TabsTrigger>
+                <TabsTrigger value="js" className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                  JavaScript
+                  <Badge variant="secondary" className="ml-1 text-xs">Optional</Badge>
+                </TabsTrigger>
+              </TabsList>
 
-            {/* CSS */}
-            <div className="flex flex-col">
-              <label className="text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide flex items-center gap-2">
-                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                CSS
-              </label>
-              <textarea
-                value={css}
-                onChange={(e) => setCss(e.target.value)}
-                className="flex-1 min-h-[400px] p-4 border-2 border-gray-200 rounded-lg font-mono text-sm focus:border-indigo-500 focus:outline-none resize-none"
-                placeholder="Paste your CSS here..."
-                spellCheck={false}
-              />
-            </div>
+              <TabsContent value="html" className="mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="html-input">HTML Code</Label>
+                  <Textarea
+                    id="html-input"
+                    value={html}
+                    onChange={(e) => setHtml(e.target.value)}
+                    className="min-h-[400px] font-mono text-sm resize-none"
+                    placeholder="Paste your HTML here..."
+                    spellCheck={false}
+                  />
+                </div>
+              </TabsContent>
 
-            {/* JavaScript */}
-            <div className="flex flex-col">
-              <label className="text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide flex items-center gap-2">
-                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                JavaScript
-                <span className="text-xs text-green-600 font-normal normal-case">(Optional)</span>
-              </label>
-              <textarea
-                value={js}
-                onChange={(e) => setJs(e.target.value)}
-                className="flex-1 min-h-[400px] p-4 border-2 border-gray-200 rounded-lg font-mono text-sm focus:border-indigo-500 focus:outline-none resize-none"
-                placeholder="Add custom JavaScript here (optional)..."
-                spellCheck={false}
-              />
-            </div>
-          </div>
+              <TabsContent value="css" className="mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="css-input">CSS Code</Label>
+                  <Textarea
+                    id="css-input"
+                    value={css}
+                    onChange={(e) => setCss(e.target.value)}
+                    className="min-h-[400px] font-mono text-sm resize-none"
+                    placeholder="Paste your CSS here..."
+                    spellCheck={false}
+                  />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="js" className="mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="js-input">JavaScript Code (Optional)</Label>
+                  <Textarea
+                    id="js-input"
+                    value={js}
+                    onChange={(e) => setJs(e.target.value)}
+                    className="min-h-[400px] font-mono text-sm resize-none"
+                    placeholder="Add custom JavaScript here (optional)..."
+                    spellCheck={false}
+                  />
+                </div>
+              </TabsContent>
+            </Tabs>
 
           {/* Info Message about HTML filtering */}
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-              <div>
-                <p className="text-sm text-blue-900 font-medium">
-                  <strong>Smart HTML Filtering:</strong> If you paste a full HTML document, we&apos;ll automatically extract only the <code className="bg-blue-100 px-1 rounded">&lt;body&gt;</code> content for you.
-                </p>
-                <p className="text-xs text-blue-700 mt-1">
-                  Document tags like <code className="bg-blue-100 px-1 rounded">&lt;html&gt;</code>, <code className="bg-blue-100 px-1 rounded">&lt;head&gt;</code>, <code className="bg-blue-100 px-1 rounded">&lt;meta&gt;</code>, and <code className="bg-blue-100 px-1 rounded">&lt;script&gt;</code> are filtered out since Webflow Designer only accepts content elements.
-                </p>
-              </div>
-            </div>
-          </div>
+          <Alert className="mb-6">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            <AlertTitle>Smart HTML Filtering</AlertTitle>
+            <AlertDescription>
+              <p className="mb-1">
+                If you paste a full HTML document, we&apos;ll automatically extract only the <code className="bg-muted px-1 rounded">&lt;body&gt;</code> content for you.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Document tags like <code className="bg-muted px-1 rounded">&lt;html&gt;</code>, <code className="bg-muted px-1 rounded">&lt;head&gt;</code>, <code className="bg-muted px-1 rounded">&lt;meta&gt;</code>, and <code className="bg-muted px-1 rounded">&lt;script&gt;</code> are filtered out since Webflow Designer only accepts content elements.
+              </p>
+            </AlertDescription>
+          </Alert>
 
           {/* Large Convert Button */}
           <div className="flex justify-center mb-8">
-            <button
+            <Button
               onClick={handleConvertAndCopy}
               disabled={copyStatus === "copying" || !html.trim() || !css.trim()}
-              className={`
-                px-12 py-5 rounded-xl font-bold text-lg transition-all transform
-                ${
-                  copyStatus === "copying"
-                    ? "bg-gray-400 cursor-wait scale-95"
-                    : copyStatus === "success"
-                    ? "bg-green-500 scale-100"
-                    : copyStatus === "error"
-                    ? "bg-red-500 scale-95"
-                    : "bg-indigo-600 hover:bg-indigo-700 hover:scale-105 active:scale-95"
-                }
-                text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed
-              `}
+              size="lg"
+              className="px-12 py-6 text-lg font-bold"
+              variant={
+                copyStatus === "success"
+                  ? "default"
+                  : copyStatus === "error"
+                  ? "destructive"
+                  : "default"
+              }
             >
               {copyStatus === "copying" && (
-                <span className="flex items-center gap-3">
+                <>
                   <svg
-                    className="animate-spin h-5 w-5"
+                    className="animate-spin h-5 w-5 mr-3"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -478,12 +500,12 @@ export default function ConverterPage() {
                     ></path>
                   </svg>
                   Converting & Copying...
-                </span>
+                </>
               )}
               {copyStatus === "success" && (
-                <span className="flex items-center gap-3">
+                <>
                   <svg
-                    className="h-6 w-6"
+                    className="h-6 w-6 mr-3"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -496,12 +518,12 @@ export default function ConverterPage() {
                     />
                   </svg>
                   Copied to Clipboard!
-                </span>
+                </>
               )}
               {copyStatus === "error" && (
-                <span className="flex items-center gap-3">
+                <>
                   <svg
-                    className="h-6 w-6"
+                    className="h-6 w-6 mr-3"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -514,32 +536,25 @@ export default function ConverterPage() {
                     />
                   </svg>
                   Copy Failed
-                </span>
+                </>
               )}
               {copyStatus === "idle" && "Convert & Copy to Webflow"}
-            </button>
+            </Button>
           </div>
 
           {/* Status Message */}
           {copyMessage && (
-            <div
-              className={`text-center mb-8 p-4 rounded-lg ${
-                copyStatus === "success"
-                  ? "bg-green-50 text-green-800 border border-green-200"
-                  : "bg-red-50 text-red-800 border border-red-200"
-              }`}
-            >
-              {copyMessage}
-            </div>
+            <Alert variant={copyStatus === "success" ? "default" : "destructive"} className="mb-8">
+              <AlertDescription>{copyMessage}</AlertDescription>
+            </Alert>
           )}
 
           {/* Error Display */}
           {error && (
-            <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg text-center">
-              <p className="text-red-800">
-                <strong>Error:</strong> {error}
-              </p>
-            </div>
+            <Alert variant="destructive" className="mb-8">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
 
           {/* Chunks UI - Show when HTML is split into multiple chunks */}
@@ -593,31 +608,28 @@ export default function ConverterPage() {
                         </p>
                       </div>
                     </div>
-                    <button
+                    <Button
                       onClick={() => handleCopyChunk(index)}
                       disabled={copiedChunks.has(index)}
-                      className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                        copiedChunks.has(index)
-                          ? "bg-green-500 text-white cursor-default"
-                          : "bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95"
-                      }`}
+                      variant={copiedChunks.has(index) ? "default" : "default"}
+                      className={copiedChunks.has(index) ? "bg-green-500 hover:bg-green-600" : ""}
                     >
                       {copiedChunks.has(index) ? (
-                        <span className="flex items-center gap-2">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <>
+                          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
                           Copied
-                        </span>
+                        </>
                       ) : (
-                        <span className="flex items-center gap-2">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <>
+                          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                           </svg>
                           Copy Chunk {index + 1}
-                        </span>
+                        </>
                       )}
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -646,18 +658,19 @@ export default function ConverterPage() {
                 <pre className="text-green-400 text-sm font-mono overflow-x-auto whitespace-pre">{customCode}</pre>
               </div>
 
-              <button
+              <Button
                 onClick={() => {
                   navigator.clipboard.writeText(customCode);
                   setCopyMessage("✅ Custom code copied! Add an HTML Embed element in Webflow and paste this code.");
                 }}
-                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 active:scale-95 transition-all"
+                className="w-full bg-purple-600 hover:bg-purple-700"
+                size="lg"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                 </svg>
                 Copy Custom Code
-              </button>
+              </Button>
 
               <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-yellow-800">
@@ -721,11 +734,12 @@ export default function ConverterPage() {
           {/* Alternative Copy Options */}
           {summary && (
             <div className="mt-6 flex flex-wrap gap-3 justify-center">
-              <button
+              <Button
                 onClick={handleDownloadJSON}
-                className="px-6 py-3 bg-gray-700 hover:bg-gray-800 text-white rounded-lg font-semibold transition-all flex items-center gap-2"
+                variant="secondary"
+                size="lg"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -734,12 +748,13 @@ export default function ConverterPage() {
                   />
                 </svg>
                 Download JSON
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleRequestPermission}
-                className="px-6 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg font-semibold transition-all flex items-center gap-2"
+                variant="default"
+                size="lg"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -748,12 +763,13 @@ export default function ConverterPage() {
                   />
                 </svg>
                 Grant Permission & Copy
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleConvertAndCopy}
-                className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-all flex items-center gap-2"
+                className="bg-green-500 hover:bg-green-600"
+                size="lg"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -762,7 +778,7 @@ export default function ConverterPage() {
                   />
                 </svg>
                 Retry Copy
-              </button>
+              </Button>
             </div>
           )}
 
@@ -839,7 +855,8 @@ export default function ConverterPage() {
               </div>
             </div>
           )}
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Info Footer */}
         {!summary && (
