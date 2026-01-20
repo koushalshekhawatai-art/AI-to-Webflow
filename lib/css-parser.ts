@@ -4,6 +4,7 @@ import { WebflowStyle } from "@/types/webflow";
 export interface ParsedCSSResult {
   classToIdMap: Map<string, string>;
   styles: WebflowStyle[];
+  customCSS?: string; // Advanced CSS that needs to go in HTML Embed
 }
 
 interface CSSRule {
@@ -24,6 +25,9 @@ export function parseCSSToWebflow(
   const classToIdMap = new Map<string, string>();
   const styles: WebflowStyle[] = [];
 
+  // Extract CSS variables from :root
+  const cssVariables = extractCSSVariables(cssString);
+
   // Parse CSS into rules
   const cssRules = parseCSSRules(cssString);
 
@@ -36,8 +40,13 @@ export function parseCSSToWebflow(
     const rule = findRuleForClass(cssRules, className);
 
     if (rule) {
+      // Resolve CSS variables in properties
+      const resolvedProperties = rule.properties.map((prop) =>
+        resolveCSSVariables(prop, cssVariables)
+      );
+
       // Convert CSS properties to Webflow styleLess format
-      const styleLess = convertToStyleLess(rule.properties);
+      const styleLess = convertToStyleLess(resolvedProperties);
 
       // Create Webflow style object
       const webflowStyle: WebflowStyle = {
@@ -75,7 +84,10 @@ export function parseCSSToWebflow(
     }
   }
 
-  return { classToIdMap, styles };
+  // Extract advanced CSS (media queries, pseudo-selectors, etc.)
+  const customCSS = extractAdvancedCSS(cssString);
+
+  return { classToIdMap, styles, customCSS };
 }
 
 /**
@@ -193,6 +205,9 @@ export function parseCSSWithMediaQueries(
   const classToIdMap = new Map<string, string>();
   const styles: WebflowStyle[] = [];
 
+  // Extract CSS variables from :root
+  const cssVariables = extractCSSVariables(cssString);
+
   // Parse base CSS (outside media queries)
   const baseCSSRules = parseCSSRules(cssString);
 
@@ -207,7 +222,11 @@ export function parseCSSWithMediaQueries(
     // Find base rule
     const baseRule = findRuleForClass(baseCSSRules, className);
     const baseStyleLess = baseRule
-      ? convertToStyleLess(baseRule.properties)
+      ? convertToStyleLess(
+          baseRule.properties.map((prop) =>
+            resolveCSSVariables(prop, cssVariables)
+          )
+        )
       : "";
 
     // Find variant rules from media queries
@@ -217,7 +236,11 @@ export function parseCSSWithMediaQueries(
       const variantRule = findRuleForClass(rules, className);
       if (variantRule) {
         variants[breakpoint] = {
-          styleLess: convertToStyleLess(variantRule.properties),
+          styleLess: convertToStyleLess(
+            variantRule.properties.map((prop) =>
+              resolveCSSVariables(prop, cssVariables)
+            )
+          ),
         };
       }
     }
@@ -298,4 +321,132 @@ function mapMediaQueryToBreakpoint(mediaCondition: string): string | null {
 
   // You can add more sophisticated mapping logic here
   return null;
+}
+
+/**
+ * Extracts CSS custom properties (variables) from :root selector
+ * @param cssString - Raw CSS string
+ * @returns Map of variable names (without --) to their values
+ */
+function extractCSSVariables(cssString: string): Map<string, string> {
+  const variables = new Map<string, string>();
+
+  // Remove comments
+  const cleanedCSS = cssString.replace(/\/\*[\s\S]*?\*\//g, "");
+
+  // Find :root block with proper bracket matching
+  const rootStart = cleanedCSS.indexOf(":root");
+  if (rootStart === -1) return variables;
+
+  const openBrace = cleanedCSS.indexOf("{", rootStart);
+  if (openBrace === -1) return variables;
+
+  // Count brackets to find matching closing brace
+  let braceCount = 1;
+  let currentPos = openBrace + 1;
+  let closeBrace = -1;
+
+  while (currentPos < cleanedCSS.length && braceCount > 0) {
+    if (cleanedCSS[currentPos] === "{") braceCount++;
+    if (cleanedCSS[currentPos] === "}") braceCount--;
+    if (braceCount === 0) {
+      closeBrace = currentPos;
+      break;
+    }
+    currentPos++;
+  }
+
+  if (closeBrace === -1) return variables;
+
+  const rootContent = cleanedCSS.substring(openBrace + 1, closeBrace);
+
+  // Extract CSS variables (--variable-name: value;)
+  const variableRegex = /--([\w-]+)\s*:\s*([^;]+);/g;
+  let varMatch;
+
+  while ((varMatch = variableRegex.exec(rootContent)) !== null) {
+    const varName = varMatch[1].trim();
+    const varValue = varMatch[2].trim();
+    variables.set(varName, varValue);
+  }
+
+  return variables;
+}
+
+/**
+ * Resolves CSS variables in a property string
+ * Replaces var(--variable-name) with actual values
+ * @param property - CSS property string (e.g., "color: var(--color-primary)")
+ * @param variables - Map of variable names to values
+ * @returns Property with resolved variables
+ */
+function resolveCSSVariables(
+  property: string,
+  variables: Map<string, string>
+): string {
+  // Match var(--variable-name) or var(--variable-name, fallback)
+  const varRegex = /var\(\s*--([\w-]+)\s*(?:,\s*([^)]+))?\)/g;
+
+  return property.replace(varRegex, (match, varName, fallback) => {
+    // Look up the variable value
+    const value = variables.get(varName);
+
+    if (value !== undefined) {
+      // If the value itself contains a variable, resolve it recursively
+      if (value.includes("var(")) {
+        return resolveCSSVariables(value, variables);
+      }
+      return value;
+    }
+
+    // If not found, use fallback or return original
+    if (fallback) {
+      return fallback.trim();
+    }
+
+    return match; // Keep original if no value and no fallback
+  });
+}
+
+/**
+ * Extracts advanced CSS that can't be handled by Webflow's style system
+ * This includes: media queries, pseudo-selectors (:hover, :focus, etc.),
+ * keyframes, and other @-rules
+ * @param cssString - Raw CSS string
+ * @returns Custom CSS string to be embedded in HTML Embed element
+ */
+function extractAdvancedCSS(cssString: string): string {
+  const advancedCSS: string[] = [];
+
+  // Remove comments
+  const cleanedCSS = cssString.replace(/\/\*[\s\S]*?\*\//g, "");
+
+  // Extract media queries
+  const mediaQueryRegex = /@media[^{]+\{[\s\S]*?\n\}/g;
+  let match;
+
+  while ((match = mediaQueryRegex.exec(cleanedCSS)) !== null) {
+    advancedCSS.push(match[0]);
+  }
+
+  // Extract keyframes
+  const keyframesRegex = /@keyframes[^{]+\{[\s\S]*?\n\}/g;
+  while ((match = keyframesRegex.exec(cleanedCSS)) !== null) {
+    advancedCSS.push(match[0]);
+  }
+
+  // Extract pseudo-selector rules (:hover, :focus, :active, ::before, ::after, etc.)
+  const pseudoRegex = /[^{]+(:hover|:focus|:active|:visited|:disabled|::before|::after|::placeholder|:first-child|:last-child|:nth-child)[^{]*\{[^}]+\}/g;
+  while ((match = pseudoRegex.exec(cleanedCSS)) !== null) {
+    advancedCSS.push(match[0]);
+  }
+
+  // Join all advanced CSS
+  const result = advancedCSS.join('\n\n');
+
+  if (result.length > 0) {
+    console.log(`[CSS Parser] Extracted ${advancedCSS.length} advanced CSS rules for HTML Embed`);
+  }
+
+  return result;
 }

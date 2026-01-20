@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { parseCSSToWebflow, extractClassNamesFromCSS } from "@/lib/css-parser";
-import { compileHTMLToNodes } from "@/lib/html-parser";
+import { compileHTMLToNodes, splitIntoChunks, createHTMLEmbedNode, extractJavaScriptFromHTML, type WebflowChunk } from "@/lib/html-parser";
 import { copyToWebflow, requestClipboardPermission } from "@/lib/clipboard";
 import { copyToWebflowCustom } from "@/lib/clipboard-custom";
 import type { WebflowClipboardData } from "@/types/webflow";
@@ -44,16 +44,23 @@ const defaultCSS = `.container {
   font-weight: 600;
 }`;
 
-const defaultJS = `// JavaScript is not currently converted
-// This area is reserved for future functionality
+const defaultJS = `// Optional: Add JavaScript here
+// This will be embedded in your Webflow site
 
-console.log("Webflow conversion ready!");`;
+// Example:
+// document.addEventListener('DOMContentLoaded', function() {
+//   console.log('Webflow site loaded!');
+// });`;
 
 export default function ConverterPage() {
   const [html, setHtml] = useState(defaultHTML);
   const [css, setCss] = useState(defaultCSS);
   const [js, setJs] = useState(defaultJS);
   const [webflowData, setWebflowData] = useState<WebflowClipboardData | null>(null);
+  const [chunks, setChunks] = useState<WebflowChunk[]>([]);
+  const [allStyles, setAllStyles] = useState<any[]>([]);
+  const [copiedChunks, setCopiedChunks] = useState<Set<number>>(new Set());
+  const [customCode, setCustomCode] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [copyStatus, setCopyStatus] = useState<"idle" | "copying" | "success" | "error">("idle");
   const [copyMessage, setCopyMessage] = useState<string>("");
@@ -62,23 +69,122 @@ export default function ConverterPage() {
     setCopyStatus("copying");
     setError("");
     setCopyMessage("");
+    setCopiedChunks(new Set());
 
     try {
       // Extract class names from CSS
       const classNames = extractClassNamesFromCSS(css);
 
-      // Parse CSS and generate UUIDs
-      const { classToIdMap, styles } = parseCSSToWebflow(css, classNames);
+      // Parse CSS and generate UUIDs (now also extracts advanced CSS)
+      const { classToIdMap, styles, customCSS } = parseCSSToWebflow(css, classNames);
 
       // Compile HTML to nodes
-      const { nodes } = compileHTMLToNodes(html, classToIdMap);
+      let { nodes, rootNodeIds } = compileHTMLToNodes(html, classToIdMap);
 
-      // Build Webflow clipboard format
+      // Extract JavaScript from HTML <script> tags
+      const htmlJS = extractJavaScriptFromHTML(html);
+
+      // Combine JavaScript from textarea and HTML
+      const combinedJS = [
+        htmlJS.trim(),
+        js && !js.includes("not currently converted") ? js.trim() : ""
+      ].filter(s => s.length > 0).join('\n\n');
+
+      // Store custom code for display (don't auto-add to avoid Webflow crashes)
+      const hasCustomCSS = customCSS && customCSS.trim().length > 0;
+      const hasCustomJS = combinedJS.length > 0;
+      let customCodeHTML = "";
+
+      if (hasCustomCSS || hasCustomJS) {
+        if (hasCustomCSS) {
+          customCodeHTML += `<style>\n${customCSS}\n</style>\n`;
+        }
+        if (hasCustomJS) {
+          customCodeHTML += `<script>\n${combinedJS}\n</script>`;
+        }
+        console.log(`[Converter] Custom code generated for manual embed in Webflow`);
+        setCustomCode(customCodeHTML);
+      } else {
+        setCustomCode("");
+      }
+
+      // Store all styles for chunks
+      setAllStyles(styles);
+
+      // Split into chunks if HTML is large
+      const nodeChunks = splitIntoChunks(nodes, rootNodeIds, 100);
+      setChunks(nodeChunks);
+
+      // If only one chunk (small HTML), copy immediately
+      if (nodeChunks.length === 1) {
+        const data: WebflowClipboardData = {
+          type: "@webflow/XscpData",
+          payload: {
+            nodes: nodeChunks[0].nodes,
+            styles,
+            assets: [],
+            ix1: [],
+            ix2: {
+              interactions: [],
+              events: [],
+              actionLists: [],
+            },
+          },
+          meta: {
+            unlinkedSymbolCount: 0,
+            droppedLinks: 0,
+            dynBindRemovedCount: 0,
+            dynListBindRemovedCount: 0,
+            paginationRemovedCount: 0,
+          },
+        };
+
+        setWebflowData(data);
+
+        const result = await copyToWebflowCustom(data);
+
+        if (result.success) {
+          setCopyStatus("success");
+          setCopyMessage("✅ Copied to clipboard! Open Webflow Designer and press Cmd+V (Mac) or Ctrl+V (Windows)");
+          setTimeout(() => {
+            setCopyStatus("idle");
+            setCopyMessage("");
+          }, 5000);
+        } else {
+          setCopyStatus("error");
+          setCopyMessage(
+            "❌ " + result.message + ". Try the 'Download JSON' button as an alternative."
+          );
+          setTimeout(() => {
+            setCopyStatus("idle");
+          }, 10000);
+        }
+      } else {
+        // Multiple chunks - show chunk UI
+        setCopyStatus("success");
+        setCopyMessage(`✅ Converted! Your HTML is large (${nodes.length} nodes), so it's split into ${nodeChunks.length} chunks. Copy each chunk below in order.`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Conversion failed");
+      setCopyStatus("error");
+      setCopyMessage("Conversion failed");
+      setTimeout(() => {
+        setCopyStatus("idle");
+        setCopyMessage("");
+      }, 5000);
+    }
+  };
+
+  const handleCopyChunk = async (chunkIndex: number) => {
+    const chunk = chunks[chunkIndex];
+    if (!chunk) return;
+
+    try {
       const data: WebflowClipboardData = {
         type: "@webflow/XscpData",
         payload: {
-          nodes,
-          styles,
+          nodes: chunk.nodes,
+          styles: allStyles, // Include ALL styles in every chunk
           assets: [],
           ix1: [],
           ix2: {
@@ -96,36 +202,16 @@ export default function ConverterPage() {
         },
       };
 
-      setWebflowData(data);
-
-      // Use DataTransfer API via custom copy events
-      // This approach supports application/json MIME type (unlike Chrome's modern Clipboard API)
       const result = await copyToWebflowCustom(data);
 
       if (result.success) {
-        setCopyStatus("success");
-        setCopyMessage("✅ Copied to clipboard! Open Webflow Designer and press Cmd+V (Mac) or Ctrl+V (Windows)");
-        setTimeout(() => {
-          setCopyStatus("idle");
-          setCopyMessage("");
-        }, 5000);
+        setCopiedChunks((prev) => new Set(prev).add(chunkIndex));
+        setCopyMessage(`✅ Chunk ${chunkIndex + 1} copied! Paste it in Webflow, then come back for the next chunk.`);
       } else {
-        setCopyStatus("error");
-        setCopyMessage(
-          "❌ " + result.message + ". Try the 'Download JSON' button as an alternative."
-        );
-        setTimeout(() => {
-          setCopyStatus("idle");
-        }, 10000);
+        setCopyMessage(`❌ Failed to copy chunk ${chunkIndex + 1}: ${result.message}`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Conversion failed");
-      setCopyStatus("error");
-      setCopyMessage("Conversion failed");
-      setTimeout(() => {
-        setCopyStatus("idle");
-        setCopyMessage("");
-      }, 5000);
+      setCopyMessage(`❌ Failed to copy chunk ${chunkIndex + 1}`);
     }
   };
 
@@ -319,16 +405,15 @@ export default function ConverterPage() {
             {/* JavaScript */}
             <div className="flex flex-col">
               <label className="text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide flex items-center gap-2">
-                <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                 JavaScript
-                <span className="text-xs text-gray-400 font-normal normal-case">(Coming soon)</span>
+                <span className="text-xs text-green-600 font-normal normal-case">(Optional)</span>
               </label>
               <textarea
                 value={js}
                 onChange={(e) => setJs(e.target.value)}
-                className="flex-1 min-h-[400px] p-4 border-2 border-gray-200 rounded-lg font-mono text-sm bg-gray-50 text-gray-400 resize-none"
-                placeholder="JavaScript support coming soon..."
-                disabled
+                className="flex-1 min-h-[400px] p-4 border-2 border-gray-200 rounded-lg font-mono text-sm focus:border-indigo-500 focus:outline-none resize-none"
+                placeholder="Add custom JavaScript here (optional)..."
                 spellCheck={false}
               />
             </div>
@@ -454,6 +539,131 @@ export default function ConverterPage() {
               <p className="text-red-800">
                 <strong>Error:</strong> {error}
               </p>
+            </div>
+          )}
+
+          {/* Chunks UI - Show when HTML is split into multiple chunks */}
+          {chunks.length > 1 && (
+            <div className="mb-8 bg-white rounded-xl p-6 border-2 border-indigo-200 shadow-lg">
+              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <svg
+                  className="w-6 h-6 text-indigo-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                Copy Each Chunk in Order
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Your HTML has been split into {chunks.length} chunks. Copy and paste each chunk into Webflow in order:
+              </p>
+              <div className="grid gap-3">
+                {chunks.map((chunk, index) => (
+                  <div
+                    key={index}
+                    className={`flex items-center justify-between p-4 rounded-lg border-2 transition-all ${
+                      copiedChunks.has(index)
+                        ? "bg-green-50 border-green-300"
+                        : "bg-gray-50 border-gray-200 hover:border-indigo-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
+                          copiedChunks.has(index)
+                            ? "bg-green-500 text-white"
+                            : "bg-indigo-100 text-indigo-700"
+                        }`}
+                      >
+                        {copiedChunks.has(index) ? "✓" : index + 1}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">
+                          {chunk.label}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {chunk.nodeCount} nodes
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleCopyChunk(index)}
+                      disabled={copiedChunks.has(index)}
+                      className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                        copiedChunks.has(index)
+                          ? "bg-green-500 text-white cursor-default"
+                          : "bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95"
+                      }`}
+                    >
+                      {copiedChunks.has(index) ? (
+                        <span className="flex items-center gap-2">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Copied
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                          </svg>
+                          Copy Chunk {index + 1}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  💡 <strong>Tip:</strong> Copy a chunk, paste it in Webflow, then come back to copy the next chunk. All chunks include the complete CSS styles.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Custom Code Section */}
+          {customCode && (
+            <div className="mb-8 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border-2 border-purple-200 shadow-lg">
+              <h3 className="text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">
+                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                </svg>
+                Custom Code (Add Manually to Webflow)
+              </h3>
+              <p className="text-gray-600 mb-4 text-sm">
+                This code contains advanced CSS (media queries, :hover, etc.) and/or JavaScript that needs to be added manually to Webflow using an <strong>HTML Embed element</strong>.
+              </p>
+
+              <div className="bg-gray-900 rounded-lg p-4 mb-4">
+                <pre className="text-green-400 text-sm font-mono overflow-x-auto whitespace-pre">{customCode}</pre>
+              </div>
+
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(customCode);
+                  setCopyMessage("✅ Custom code copied! Add an HTML Embed element in Webflow and paste this code.");
+                }}
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 active:scale-95 transition-all"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+                Copy Custom Code
+              </button>
+
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  <strong>How to add:</strong> In Webflow, drag an <strong>HTML Embed</strong> element to your page, paste this code, and save. The media queries and JavaScript will work on your published site.
+                </p>
+              </div>
             </div>
           )}
 

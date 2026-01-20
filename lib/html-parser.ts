@@ -14,6 +14,12 @@ export interface CompileHTMLResult {
   rootNodeIds: string[];
 }
 
+export interface WebflowChunk {
+  label: string;
+  nodes: WebflowNode[];
+  nodeCount: number;
+}
+
 /**
  * Maps HTML tags to Webflow node types
  */
@@ -55,12 +61,13 @@ const TAG_TO_TYPE_MAP: Record<string, WebflowNodeType> = {
   ol: "List",
   li: "ListItem",
 
-  // Forms
-  form: "FormWrapper",
+  // Forms - Note: input type determines actual type (handled in getWebflowType)
+  form: "FormForm",
   input: "FormTextInput",
-  button: "FormButton",
-  textarea: "FormTextInput",
-  label: "Block",
+  button: "Block", // Regular buttons are Block, not FormButton
+  textarea: "FormTextarea",
+  select: "FormSelect",
+  label: "FormBlockLabel",
 
   // Container
   container: "Container",
@@ -162,16 +169,18 @@ function extractContentElements(dom: any): Element[] {
  * @param element - DOM element to process
  * @param classToIdMap - Map of class names to style UUIDs
  * @param allNodes - Array to accumulate all nodes
+ * @param insideForm - Whether this element is inside a form
  * @returns The UUID of the created node
  */
 function processElement(
   element: Element,
   classToIdMap: Map<string, string>,
-  allNodes: WebflowNode[]
+  allNodes: WebflowNode[],
+  insideForm: boolean = false
 ): string {
   const nodeId = uuidv4();
   const tag = element.name.toLowerCase();
-  const type = getWebflowType(tag);
+  const type = getWebflowType(tag, element, insideForm);
 
   // Extract classes and map to UUIDs
   const classNames = extractClassNames(element);
@@ -183,61 +192,88 @@ function processElement(
   const attributes = extractAttributes(element, tag);
 
   // Build data object with correct field order (matches Relume/Webflow)
-  // Different element types have different requirements for text/tag fields in data:
-  // - Block/Container/Section: need text=false AND tag
-  // - Heading: needs tag (no text field)
-  // - Paragraph/Link: NO tag, NO text field in data
-  // - Form elements (FormButton, etc.): need text=false AND tag
+  // DOM type (Custom Element) has a different structure than other types
+  let dataObject: any;
 
-  const dataObject: any = {
-    attr: attributes,
-    xattr: [],
-  };
+  if (type === "DOM") {
+    // Custom Element (DOM) structure based on actual Webflow format
+    console.log(`[HTML Parser] Creating Custom Element (DOM) for tag: <${tag}>`);
 
-  // Determine which fields to add based on type
-  const needsTextAndTag = [
-    "Block", "Section", "Container",
-    "FormButton", "FormTextInput", "FormWrapper", "FormForm"
-  ].includes(type);
+    // Extract HTML attributes and convert to Webflow format
+    const htmlAttributes: Array<{name: string, value: string}> = [];
+    if (element.attribs) {
+      for (const [name, value] of Object.entries(element.attribs)) {
+        // Skip class and id (handled separately)
+        if (name !== 'class' && name !== 'id') {
+          htmlAttributes.push({
+            name: name,
+            value: value || " " // Empty attributes get a space
+          });
+        }
+      }
+    }
 
-  const needsTagOnly = ["Heading"].includes(type);
+    dataObject = {
+      editable: true,
+      tag: tag, // The actual custom tag (audio, video, canvas, etc.)
+      attributes: htmlAttributes
+    };
+  } else {
+    // Standard Webflow elements
+    dataObject = {
+      attr: attributes,
+      xattr: [],
+    };
 
-  const needsNeither = ["Paragraph", "Link", "Image"].includes(type);
+    // All form-related types (they don't use text/tag, use form object instead)
+    const formTypes = [
+      "FormWrapper", "FormForm", "FormButton", "FormTextInput", "FormTextarea",
+      "FormSelect", "FormBlockLabel", "FormInlineLabel", "FormRadioWrapper",
+      "FormRadioInput", "FormCheckboxWrapper", "FormCheckboxInput",
+      "FormSuccessMessage", "FormErrorMessage"
+    ];
 
-  if (needsTextAndTag) {
-    // Block and Form types: attr, xattr, text, tag, devlink, ...
-    dataObject.text = false;
-    dataObject.tag = tag;
-  } else if (needsTagOnly) {
-    // Heading types: attr, xattr, tag, devlink, ...
-    dataObject.tag = tag;
+    // Determine which fields to add based on type
+    const needsTextAndTag = ["Block", "Section", "Container"].includes(type);
+    const needsTagOnly = ["Heading"].includes(type);
+    const needsNeither = ["Paragraph", "Link", "Image", ...formTypes].includes(type);
+
+    if (needsTextAndTag) {
+      // Block and Form types: attr, xattr, text, tag, devlink, ...
+      dataObject.text = false;
+      dataObject.tag = tag;
+    } else if (needsTagOnly) {
+      // Heading types: attr, xattr, tag, devlink, ...
+      dataObject.tag = tag;
+    }
+    // else needsNeither: attr, xattr, devlink, ... (no text or tag in data)
+
+    // Add type-specific data BEFORE common fields (critical for Webflow!)
+    // Order must be: attr, xattr, [text, tag], [type-specific], devlink, displayName, search, visibility
+    const typeSpecificData = getTypeSpecificData(element, tag, type);
+    Object.assign(dataObject, typeSpecificData);
+
+    // Add remaining common fields in correct order
+    dataObject.devlink = {
+      runtimeProps: {},
+      slot: "",
+    };
+    dataObject.displayName = "";
+    // FormWrapper has search.exclude = true, all others have false
+    dataObject.search = {
+      exclude: type === "FormWrapper" ? true : false,
+    };
+    dataObject.visibility = {
+      conditions: [],
+    };
   }
-  // else needsNeither: attr, xattr, devlink, ... (no text or tag in data)
-
-  // Add type-specific data BEFORE common fields (critical for Webflow!)
-  // Order must be: attr, xattr, [text, tag], [type-specific], devlink, displayName, search, visibility
-  const typeSpecificData = getTypeSpecificData(element, tag, type);
-  Object.assign(dataObject, typeSpecificData);
-
-  // Add remaining common fields in correct order
-  dataObject.devlink = {
-    runtimeProps: {},
-    slot: "",
-  };
-  dataObject.displayName = "";
-  dataObject.search = {
-    exclude: false,
-  };
-  dataObject.visibility = {
-    conditions: [],
-  };
 
   // Create Webflow element node with empty children (will be populated after)
   const webflowNode: WebflowElementNode = {
     _id: nodeId,
     classes: classUUIDs,
     type: type,
-    tag: tag,
+    tag: type === "DOM" ? "div" : tag, // DOM elements always use "div" at root level
     data: dataObject, // Already has everything in correct order
     children: [], // Empty for now
   };
@@ -249,10 +285,13 @@ function processElement(
   // NOW process children (they will be added after the parent)
   const childIds: string[] = [];
 
+  // If this is a form element, mark all children as being inside a form
+  const childrenInsideForm = tag === "form" || insideForm;
+
   for (const child of element.children) {
     if (child instanceof Element) {
-      // Recursively process child elements
-      const childId = processElement(child, classToIdMap, allNodes);
+      // Recursively process child elements, passing form context
+      const childId = processElement(child, classToIdMap, allNodes, childrenInsideForm);
       childIds.push(childId);
     } else if (child instanceof Text) {
       // Process text nodes
@@ -289,9 +328,48 @@ function createTextNode(text: string, allNodes: WebflowNode[]): string {
 
 /**
  * Gets the Webflow type for an HTML tag
+ * For form inputs, checks the type attribute to determine the correct Webflow type
+ * Only creates form elements when inside a form context
  */
-function getWebflowType(tag: string): WebflowNodeType {
-  return TAG_TO_TYPE_MAP[tag] || "Block";
+function getWebflowType(tag: string, element?: Element, insideForm: boolean = false): WebflowNodeType {
+  // Special handling for input elements - type attribute determines Webflow type
+  if (tag === "input" && element) {
+    const inputType = element.attribs["type"]?.toLowerCase() || "text";
+
+    // Only create FormButton if inside a form, otherwise treat as regular Block
+    if (inputType === "submit" || inputType === "button") {
+      return insideForm ? "FormButton" : "Block";
+    } else if (inputType === "radio") {
+      return insideForm ? "FormRadioInput" : "Block";
+    } else if (inputType === "checkbox") {
+      return insideForm ? "FormCheckboxInput" : "Block";
+    } else {
+      // text, email, tel, password, etc. - only FormTextInput if inside form
+      return insideForm ? "FormTextInput" : "Block";
+    }
+  }
+
+  // textarea and select only become form elements if inside a form
+  if (tag === "textarea") {
+    return insideForm ? "FormTextarea" : "Block";
+  }
+
+  if (tag === "select") {
+    return insideForm ? "FormSelect" : "Block";
+  }
+
+  if (tag === "label") {
+    return insideForm ? "FormBlockLabel" : "Block";
+  }
+
+  // If tag is in the map, use the mapped type
+  if (TAG_TO_TYPE_MAP[tag]) {
+    return TAG_TO_TYPE_MAP[tag];
+  }
+
+  // For tags not in our map, use Custom Element (type "DOM") to preserve the original tag
+  // This preserves semantic HTML5 tags like <article>, <figure>, <aside>, <main>, etc.
+  return "DOM";
 }
 
 /**
@@ -334,15 +412,58 @@ function extractAttributes(
       // attr should only have id for links
       break;
 
-    case "input":
-    case "textarea":
-      attributes.type = element.attribs["type"] || "text";
+    case "form":
       attributes.name = element.attribs["name"] || "";
+      attributes["data-name"] = element.attribs["data-name"] || element.attribs["name"] || "";
+      attributes.action = element.attribs["action"] || "";
+      attributes.method = element.attribs["method"] || "get";
+      attributes.redirect = element.attribs["redirect"] || "";
+      attributes["data-redirect"] = element.attribs["data-redirect"] || "";
+      break;
+
+    case "input":
+      const inputType = element.attribs["type"] || "text";
+      attributes.type = inputType;
+      attributes.name = element.attribs["name"] || "";
+      attributes["data-name"] = element.attribs["data-name"] || element.attribs["name"] || "";
       attributes.placeholder = element.attribs["placeholder"] || "";
+      attributes.required = element.attribs["required"] !== undefined;
+      attributes.disabled = element.attribs["disabled"] !== undefined;
+      attributes.autofocus = element.attribs["autofocus"] !== undefined;
+
+      if (inputType === "submit" || inputType === "button") {
+        attributes.value = element.attribs["value"] || "Submit";
+        attributes["data-wait"] = element.attribs["data-wait"] || "Please wait...";
+      } else if (inputType === "radio" || inputType === "checkbox") {
+        attributes.value = element.attribs["value"] || "";
+        attributes.checked = element.attribs["checked"] !== undefined;
+      } else {
+        attributes.maxlength = parseInt(element.attribs["maxlength"]) || 256;
+      }
+      break;
+
+    case "textarea":
+      attributes.name = element.attribs["name"] || "";
+      attributes["data-name"] = element.attribs["data-name"] || element.attribs["name"] || "";
+      attributes.placeholder = element.attribs["placeholder"] || "";
+      attributes.required = element.attribs["required"] !== undefined;
+      attributes.autofocus = element.attribs["autofocus"] !== undefined;
+      attributes.maxlength = parseInt(element.attribs["maxlength"]) || 5000;
+      break;
+
+    case "select":
+      attributes.name = element.attribs["name"] || "";
+      attributes["data-name"] = element.attribs["data-name"] || element.attribs["name"] || "";
+      attributes.required = element.attribs["required"] !== undefined;
+      attributes.multiple = element.attribs["multiple"] !== undefined;
       break;
 
     case "button":
       attributes.type = element.attribs["type"] || "button";
+      break;
+
+    case "label":
+      attributes.for = element.attribs["for"] || "";
       break;
   }
 
@@ -382,6 +503,115 @@ function getTypeSpecificData(
 
     case "Grid":
       data.grid = "two-by-two";
+      break;
+
+    // Form elements
+    case "FormWrapper":
+      data.form = { type: "wrapper" };
+      // Note: search.exclude will be set to true in common fields section
+      break;
+
+    case "FormForm":
+      const formName = element.attribs["name"] || element.attribs["id"] || "Form";
+      data.form = {
+        type: "form",
+        name: formName,
+      };
+      data.Source = {
+        tag: "Default form",
+        val: {},
+      };
+      break;
+
+    case "FormButton":
+      const buttonValue = element.attribs["value"] || "Submit";
+      data.style = {
+        base: {
+          main: {
+            noPseudo: { justifySelf: "start" },
+          },
+        },
+      };
+      data.form = { type: "button" };
+      data.eventIds = [];
+      break;
+
+    case "FormTextInput":
+      const inputName = element.attribs["name"] || element.attribs["id"] || "Field";
+      data.form = {
+        type: "input",
+        name: inputName,
+        passwordPage: false,
+      };
+      break;
+
+    case "FormTextarea":
+      const textareaName = element.attribs["name"] || element.attribs["id"] || "Message";
+      data.form = {
+        type: "textarea",
+        name: textareaName,
+      };
+      break;
+
+    case "FormSelect":
+      const selectName = element.attribs["name"] || element.attribs["id"] || "Select";
+      // TODO: Parse <option> elements from children
+      data.form = {
+        type: "select",
+        opts: [
+          { v: "", t: "Select one..." },
+          { v: "Option 1", t: "Option 1" },
+        ],
+        name: selectName,
+      };
+      break;
+
+    case "FormBlockLabel":
+      data.form = {
+        type: "label",
+        passwordPage: false,
+      };
+      break;
+
+    case "FormInlineLabel":
+      // Type determined by parent (radio or checkbox)
+      data.form = {
+        type: "radio-label", // Will be updated based on context
+      };
+      break;
+
+    case "FormRadioInput":
+      const radioName = element.attribs["name"] || "Radio";
+      data.form = {
+        type: "radio-input",
+        name: radioName,
+      };
+      data.inputType = "custom";
+      break;
+
+    case "FormCheckboxInput":
+      const checkboxName = element.attribs["name"] || "Checkbox";
+      data.form = {
+        type: "checkbox-input",
+        name: checkboxName,
+      };
+      data.inputType = "custom";
+      break;
+
+    case "FormRadioWrapper":
+      data.form = { type: "radio" };
+      break;
+
+    case "FormCheckboxWrapper":
+      data.form = { type: "checkbox" };
+      break;
+
+    case "FormSuccessMessage":
+      data.form = { type: "msg-done" };
+      break;
+
+    case "FormErrorMessage":
+      data.form = { type: "msg-fail" };
       break;
   }
 
@@ -432,6 +662,203 @@ export function compileHTMLWithStyles(
     ...result,
     classToIdMap,
   };
+}
+
+/**
+ * Splits compiled HTML into smaller chunks for easier pasting into Webflow
+ * Each chunk contains all styles but only a subset of nodes
+ * @param nodes - All compiled nodes
+ * @param rootNodeIds - Root node IDs from compilation
+ * @param maxNodesPerChunk - Maximum nodes per chunk (default: 100)
+ * @returns Array of chunks with labels
+ */
+export function splitIntoChunks(
+  nodes: WebflowNode[],
+  rootNodeIds: string[],
+  maxNodesPerChunk: number = 100
+): WebflowChunk[] {
+  const chunks: WebflowChunk[] = [];
+
+  // Helper function to count all nodes in a subtree
+  function countNodesInSubtree(nodeId: string): number {
+    const node = nodes.find((n) => n._id === nodeId);
+    if (!node) return 0;
+
+    let count = 1; // Count this node
+
+    if ("children" in node && node.children) {
+      for (const childId of node.children) {
+        count += countNodesInSubtree(childId);
+      }
+    }
+
+    return count;
+  }
+
+  // Helper function to collect all nodes in a subtree
+  function collectSubtreeNodes(nodeId: string, collected: Set<string>) {
+    collected.add(nodeId);
+    const node = nodes.find((n) => n._id === nodeId);
+
+    if (node && "children" in node && node.children) {
+      for (const childId of node.children) {
+        collectSubtreeNodes(childId, collected);
+      }
+    }
+  }
+
+  // Helper function to get semantic label for a node
+  function getNodeLabel(nodeId: string): string {
+    const node = nodes.find((n) => n._id === nodeId);
+    if (!node || "text" in node) return "Content";
+
+    const elementNode = node as WebflowElementNode;
+    const tag = elementNode.tag.toLowerCase();
+
+    // Map tags to user-friendly labels
+    const labelMap: Record<string, string> = {
+      header: "Header",
+      nav: "Navigation",
+      section: "Section",
+      footer: "Footer",
+      main: "Main Content",
+      article: "Article",
+      aside: "Sidebar",
+      form: "Form",
+    };
+
+    return labelMap[tag] || "Content";
+  }
+
+  let currentChunkNodes = new Set<string>();
+  let currentChunkRoots: string[] = [];
+  let chunkIndex = 1;
+
+  for (const rootId of rootNodeIds) {
+    const subtreeSize = countNodesInSubtree(rootId);
+
+    // If adding this root would exceed the limit, start a new chunk
+    if (currentChunkNodes.size > 0 && currentChunkNodes.size + subtreeSize > maxNodesPerChunk) {
+      // Finalize current chunk
+      const chunkNodes = nodes.filter((n) => currentChunkNodes.has(n._id));
+      const label = currentChunkRoots.length === 1
+        ? getNodeLabel(currentChunkRoots[0])
+        : `Chunk ${chunkIndex}`;
+
+      chunks.push({
+        label,
+        nodes: chunkNodes,
+        nodeCount: chunkNodes.length,
+      });
+
+      chunkIndex++;
+      currentChunkNodes = new Set<string>();
+      currentChunkRoots = [];
+    }
+
+    // Add this root to current chunk
+    collectSubtreeNodes(rootId, currentChunkNodes);
+    currentChunkRoots.push(rootId);
+  }
+
+  // Add final chunk if it has content
+  if (currentChunkNodes.size > 0) {
+    const chunkNodes = nodes.filter((n) => currentChunkNodes.has(n._id));
+    const label = currentChunkRoots.length === 1
+      ? getNodeLabel(currentChunkRoots[0])
+      : chunkIndex === 1
+        ? "Complete Page"
+        : `Chunk ${chunkIndex}`;
+
+    chunks.push({
+      label,
+      nodes: chunkNodes,
+      nodeCount: chunkNodes.length,
+    });
+  }
+
+  return chunks;
+}
+
+/**
+ * Extracts JavaScript from HTML <script> tags
+ * @param htmlString - Raw HTML string
+ * @returns Extracted JavaScript code
+ */
+export function extractJavaScriptFromHTML(htmlString: string): string {
+  const scriptContents: string[] = [];
+
+  // Match <script> tags and extract their content
+  const scriptRegex = /<script[^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+
+  while ((match = scriptRegex.exec(htmlString)) !== null) {
+    const scriptContent = match[1].trim();
+    if (scriptContent.length > 0) {
+      scriptContents.push(scriptContent);
+    }
+  }
+
+  return scriptContents.join('\n\n');
+}
+
+/**
+ * Creates an HTML Embed element for custom CSS and JavaScript
+ * @param customCSS - Custom CSS to embed (media queries, pseudo-selectors, etc.)
+ * @param customJS - Custom JavaScript to embed (optional)
+ * @returns Webflow HTML Embed element node
+ */
+export function createHTMLEmbedNode(
+  customCSS?: string,
+  customJS?: string
+): WebflowElementNode {
+  const uuid = uuidv4();
+  let embedHTML = "";
+
+  // Add custom CSS in a <style> tag
+  if (customCSS && customCSS.trim().length > 0) {
+    embedHTML += `<style>\n${customCSS}\n</style>\n`;
+  }
+
+  // Add custom JavaScript in a <script> tag
+  if (customJS && customJS.trim().length > 0) {
+    embedHTML += `<script>\n${customJS}\n</script>`;
+  }
+
+  // Create HTML Embed element
+  const embedNode: WebflowElementNode = {
+    _id: uuid,
+    type: "HtmlEmbed",
+    tag: "div",
+    data: {
+      attr: {
+        id: "",
+      },
+      xattr: [],
+      text: false,
+      tag: "div",
+      devlink: {
+        runtimeProps: {},
+        slot: "",
+      },
+      displayName: "",
+      search: {
+        exclude: false,
+      },
+      visibility: {
+        conditions: [],
+      },
+      embed: {
+        type: "code",
+        content: embedHTML,
+      },
+    },
+    children: [],
+  };
+
+  console.log(`[HTML Parser] Created HTML Embed with ${customCSS ? 'CSS' : ''}${customCSS && customJS ? ' and ' : ''}${customJS ? 'JavaScript' : ''}`);
+
+  return embedNode;
 }
 
 /**

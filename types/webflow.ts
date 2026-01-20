@@ -86,8 +86,23 @@ export interface WebflowAttributes {
   // Link attributes
   href?: string;
   target?: string;
-  // Other common attributes
-  [key: string]: string | undefined;
+  // Form attributes (can be boolean or string)
+  name?: string;
+  type?: string;
+  value?: string;
+  placeholder?: string;
+  required?: boolean;
+  disabled?: boolean;
+  autofocus?: boolean;
+  checked?: boolean;
+  maxlength?: number;
+  multiple?: boolean;
+  action?: string;
+  method?: string;
+  redirect?: string;
+  for?: string;
+  // Other common attributes (using any to allow mixed types)
+  [key: string]: any;
 }
 
 export interface WebflowDevlink {
