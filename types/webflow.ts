@@ -73,6 +73,11 @@ export interface WebflowNodeData {
   img?: WebflowImageRef;
   srcsetDisabled?: boolean;
   sizes?: any[];
+  // HTML Embed specific
+  embed?: {
+    type: string;
+    content: string;
+  };
 }
 
 export interface WebflowAttributes {
