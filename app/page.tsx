@@ -75,6 +75,7 @@ export default function ConverterPage() {
   const [error, setError] = useState<string>("");
   const [copyStatus, setCopyStatus] = useState<"idle" | "copying" | "success" | "error">("idle");
   const [copyMessage, setCopyMessage] = useState<string>("");
+  const [customCodeCopied, setCustomCodeCopied] = useState<boolean>(false);
 
   const handleConvertAndCopy = async () => {
     setCopyStatus("copying");
@@ -520,7 +521,7 @@ export default function ConverterPage() {
                       d="M5 13l4 4L19 7"
                     />
                   </svg>
-                  Copied to Clipboard!
+                  {chunks.length > 1 ? "Copy from Chunks Below" : "Copied to Clipboard!"}
                 </>
               )}
               {copyStatus === "error" && (
@@ -664,15 +665,28 @@ export default function ConverterPage() {
               <Button
                 onClick={() => {
                   navigator.clipboard.writeText(customCode);
+                  setCustomCodeCopied(true);
                   setCopyMessage("✅ Custom code copied! Add an HTML Embed element in Webflow and paste this code.");
+                  setTimeout(() => setCustomCodeCopied(false), 2000);
                 }}
-                className="w-full bg-purple-600 hover:bg-purple-700"
+                className={`w-full ${customCodeCopied ? 'bg-green-600 hover:bg-green-700' : 'bg-purple-600 hover:bg-purple-700'}`}
                 size="lg"
               >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                </svg>
-                Copy Custom Code
+                {customCodeCopied ? (
+                  <>
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                    Copy Custom Code
+                  </>
+                )}
               </Button>
 
               <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
