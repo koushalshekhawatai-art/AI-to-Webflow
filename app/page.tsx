@@ -122,7 +122,7 @@ export default function ConverterPage() {
       setAllStyles(styles);
 
       // Split into chunks if HTML is large
-      const nodeChunks = splitIntoChunks(nodes, rootNodeIds, 100);
+      const nodeChunks = splitIntoChunks(nodes, rootNodeIds, 25);
       setChunks(nodeChunks);
 
       // If only one chunk (small HTML), copy immediately
