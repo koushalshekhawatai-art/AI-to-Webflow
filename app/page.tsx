@@ -66,6 +66,7 @@ export default function ConverterPage() {
   const [html, setHtml] = useState(defaultHTML);
   const [css, setCss] = useState(defaultCSS);
   const [js, setJs] = useState(defaultJS);
+  const [activeTab, setActiveTab] = useState<string>("html");
   const [webflowData, setWebflowData] = useState<WebflowClipboardData | null>(null);
   const [chunks, setChunks] = useState<WebflowChunk[]>([]);
   const [allStyles, setAllStyles] = useState<any[]>([]);
@@ -404,7 +405,7 @@ export default function ConverterPage() {
           </CardHeader>
           <CardContent>
             {/* Code Input Tabs */}
-            <Tabs defaultValue="html" className="mb-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="html" className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
