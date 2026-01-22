@@ -1,7 +1,8 @@
 {
-  "name": "code-to-webflow",
+  "name": "ai2webflow",
   "version": "0.1.0",
   "private": true,
+  "description": "From Claude/ChatGPT to Webflow in 1-click. Convert AI-generated HTML/CSS to Webflow clipboard format.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

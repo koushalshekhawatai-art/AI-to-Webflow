@@ -18,9 +18,9 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 
 const defaultHTML = `<div class="container">
-  <h1 class="heading">Welcome to Code to Webflow</h1>
+  <h1 class="heading">Welcome to AI2WEBFLOW</h1>
   <p class="description">
-    Convert your HTML and CSS into Webflow's clipboard format.
+    From Claude/ChatGPT to Webflow in 1-click. Convert AI-generated HTML and CSS into Webflow's clipboard format.
   </p>
   <a href="#" class="button">Get Started</a>
 </div>`;
@@ -375,7 +375,10 @@ export default function ConverterPage() {
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-base font-medium text-gray-900">Code to Webflow</h1>
+            <div>
+              <h1 className="text-base font-medium text-gray-900">AI2WEBFLOW</h1>
+              <p className="text-xs text-gray-500">From Claude/ChatGPT to Webflow in 1-click</p>
+            </div>
             <div className="flex items-center gap-4">
               <Badge variant="secondary" className="hidden sm:flex">
                 v1.0

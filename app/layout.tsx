@@ -3,8 +3,8 @@ import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Code to Webflow",
-  description: "Convert HTML/CSS to Webflow clipboard format",
+  title: "AI2WEBFLOW - From Claude/ChatGPT to Webflow in 1-click",
+  description: "From Claude/ChatGPT to Webflow in 1-click. Convert AI-generated HTML/CSS to Webflow clipboard format instantly.",
 };
 
 export default function RootLayout({
