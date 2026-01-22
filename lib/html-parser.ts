@@ -203,8 +203,9 @@ function processElement(
     const htmlAttributes: Array<{name: string, value: string}> = [];
     if (element.attribs) {
       for (const [name, value] of Object.entries(element.attribs)) {
-        // Skip class and id (handled separately)
-        if (name !== 'class' && name !== 'id') {
+        // Skip class (handled by Webflow's class system)
+        // BUT preserve id for JavaScript targeting
+        if (name !== 'class') {
           htmlAttributes.push({
             name: name,
             value: value || " " // Empty attributes get a space
