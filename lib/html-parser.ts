@@ -800,9 +800,15 @@ export function extractJavaScriptFromHTML(htmlString: string): string {
     const srcMatch = attributes.match(/src\s*=\s*["']([^"']+)["']/i);
 
     if (srcMatch) {
-      // External script - preserve the full script tag
       const srcUrl = srcMatch[1];
-      scriptParts.push(`<script src="${srcUrl}"></script>`);
+
+      // Only include if it's a CDN/external URL (starts with http://, https://, or //)
+      // Skip local file references like "script.js"
+      if (srcUrl.match(/^(https?:)?\/\//)) {
+        scriptParts.push(`<script src="${srcUrl}"></script>`);
+      } else {
+        console.warn(`[HTML Parser] Skipping local script reference: ${srcUrl}`);
+      }
     }
 
     // Add inline script content if present

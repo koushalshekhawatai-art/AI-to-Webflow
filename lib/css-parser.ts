@@ -436,9 +436,12 @@ function extractAdvancedCSS(cssString: string): string {
   }
 
   // Extract pseudo-selector rules (:hover, :focus, :active, ::before, ::after, etc.)
-  const pseudoRegex = /[^{]+(:hover|:focus|:active|:visited|:disabled|::before|::after|::placeholder|:first-child|:last-child|:nth-child)[^{]*\{[^}]+\}/g;
+  const pseudoRegex = /([.#\w\-\s,>+~\[\]="':]+)(:hover|:focus|:active|:visited|:disabled|::before|::after|::placeholder|:first-child|:last-child|:nth-child)([^{]*)\{([^}]+)\}/g;
   while ((match = pseudoRegex.exec(cleanedCSS)) !== null) {
-    advancedCSS.push(match[0]);
+    // match[0] is the full match, reconstruct it properly
+    const selector = match[1].trim() + match[2] + match[3];
+    const properties = match[4];
+    advancedCSS.push(`${selector} {\n${properties}\n}`);
   }
 
   // Join all advanced CSS
