@@ -786,20 +786,32 @@ export function splitIntoChunks(
  * @returns Extracted JavaScript code
  */
 export function extractJavaScriptFromHTML(htmlString: string): string {
-  const scriptContents: string[] = [];
+  const scriptParts: string[] = [];
 
-  // Match <script> tags and extract their content
-  const scriptRegex = /<script[^>]*>([\s\S]*?)<\/script>/gi;
+  // Match <script> tags - both with src and inline content
+  const scriptRegex = /<script([^>]*)>([\s\S]*?)<\/script>/gi;
   let match;
 
   while ((match = scriptRegex.exec(htmlString)) !== null) {
-    const scriptContent = match[1].trim();
+    const attributes = match[1];
+    const scriptContent = match[2].trim();
+
+    // Check if this is an external script (has src attribute)
+    const srcMatch = attributes.match(/src\s*=\s*["']([^"']+)["']/i);
+
+    if (srcMatch) {
+      // External script - preserve the full script tag
+      const srcUrl = srcMatch[1];
+      scriptParts.push(`<script src="${srcUrl}"></script>`);
+    }
+
+    // Add inline script content if present
     if (scriptContent.length > 0) {
-      scriptContents.push(scriptContent);
+      scriptParts.push(scriptContent);
     }
   }
 
-  return scriptContents.join('\n\n');
+  return scriptParts.join('\n\n');
 }
 
 /**

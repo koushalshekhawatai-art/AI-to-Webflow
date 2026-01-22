@@ -112,7 +112,21 @@ export default function ConverterPage() {
           customCodeHTML += `<style>\n${customCSS}\n</style>\n`;
         }
         if (hasCustomJS) {
-          customCodeHTML += `<script>\n${combinedJS}\n</script>`;
+          // Split by <script tags to identify external scripts and inline code
+          const parts = combinedJS.split(/(<script[^>]*><\/script>)/g).filter(p => p.trim());
+          let processedJS = "";
+
+          for (const part of parts) {
+            if (part.startsWith('<script')) {
+              // External script tag - keep as is
+              processedJS += part + '\n';
+            } else {
+              // Inline code - wrap in script tags
+              processedJS += `<script>\n${part.trim()}\n</script>\n`;
+            }
+          }
+
+          customCodeHTML += processedJS;
         }
         console.log(`[Converter] Custom code generated for manual embed in Webflow`);
         setCustomCode(customCodeHTML);
