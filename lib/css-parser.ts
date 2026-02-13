@@ -334,40 +334,25 @@ function extractCSSVariables(cssString: string): Map<string, string> {
   // Remove comments
   const cleanedCSS = cssString.replace(/\/\*[\s\S]*?\*\//g, "");
 
-  // Find :root block with proper bracket matching
-  const rootStart = cleanedCSS.indexOf(":root");
-  if (rootStart === -1) return variables;
+  // Extract variables from all CSS rules (including :root and class selectors)
+  const ruleRegex = /([^{]+)\{([^}]+)\}/g;
+  let match;
 
-  const openBrace = cleanedCSS.indexOf("{", rootStart);
-  if (openBrace === -1) return variables;
+  while ((match = ruleRegex.exec(cleanedCSS)) !== null) {
+    const ruleContent = match[2];
 
-  // Count brackets to find matching closing brace
-  let braceCount = 1;
-  let currentPos = openBrace + 1;
-  let closeBrace = -1;
+    // Extract CSS variables (--variable-name: value;) from this rule
+    const variableRegex = /--([\w-]+)\s*:\s*([^;]+);/g;
+    let varMatch;
 
-  while (currentPos < cleanedCSS.length && braceCount > 0) {
-    if (cleanedCSS[currentPos] === "{") braceCount++;
-    if (cleanedCSS[currentPos] === "}") braceCount--;
-    if (braceCount === 0) {
-      closeBrace = currentPos;
-      break;
+    while ((varMatch = variableRegex.exec(ruleContent)) !== null) {
+      const varName = varMatch[1].trim();
+      const varValue = varMatch[2].trim();
+      // Only add if not already defined (first definition wins)
+      if (!variables.has(varName)) {
+        variables.set(varName, varValue);
+      }
     }
-    currentPos++;
-  }
-
-  if (closeBrace === -1) return variables;
-
-  const rootContent = cleanedCSS.substring(openBrace + 1, closeBrace);
-
-  // Extract CSS variables (--variable-name: value;)
-  const variableRegex = /--([\w-]+)\s*:\s*([^;]+);/g;
-  let varMatch;
-
-  while ((varMatch = variableRegex.exec(rootContent)) !== null) {
-    const varName = varMatch[1].trim();
-    const varValue = varMatch[2].trim();
-    variables.set(varName, varValue);
   }
 
   return variables;

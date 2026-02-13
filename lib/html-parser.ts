@@ -7,11 +7,13 @@ import {
   WebflowTextNode,
   WebflowNodeType,
   WebflowAttributes,
+  WebflowAsset,
 } from "@/types/webflow";
 
 export interface CompileHTMLResult {
   nodes: WebflowNode[];
   rootNodeIds: string[];
+  assets: WebflowAsset[];
 }
 
 export interface WebflowChunk {
@@ -26,7 +28,7 @@ export interface WebflowChunk {
 const TAG_TO_TYPE_MAP: Record<string, WebflowNodeType> = {
   // Block elements
   div: "Block",
-  section: "Section",
+  section: "Block",
   article: "Block",
   aside: "Block",
   nav: "Block",
@@ -82,6 +84,52 @@ const DOCUMENT_STRUCTURE_TAGS = [
 ];
 
 /**
+ * Generates Webflow asset metadata from an image URL
+ * @param imageUrl - The source URL of the image
+ * @returns WebflowAsset object
+ */
+function createAssetFromImageUrl(imageUrl: string): WebflowAsset {
+  const assetId = uuidv4();
+  const fileName = imageUrl.split("/").pop() || "image";
+  const now = new Date().toISOString();
+
+  // Extract basic info from URL
+  const mimeType = fileName.endsWith(".svg")
+    ? "image/svg+xml"
+    : fileName.endsWith(".png")
+    ? "image/png"
+    : fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")
+    ? "image/jpeg"
+    : fileName.endsWith(".gif")
+    ? "image/gif"
+    : fileName.endsWith(".webp")
+    ? "image/webp"
+    : "image/png"; // default
+
+  return {
+    _id: assetId,
+    siteId: "external", // Placeholder - Webflow will update this
+    fileName: fileName,
+    cdnUrl: imageUrl,
+    width: 1000, // Default - Webflow will update
+    height: 1000, // Default - Webflow will update
+    isHD: false,
+    createdOn: now,
+    origFileName: fileName,
+    fileHash: "", // Webflow will generate this
+    translationLoading: false,
+    variants: [],
+    mimeType: mimeType,
+    isFromWellKnownFolder: false,
+    s3Url: imageUrl, // Use the external URL as fallback
+    thumbUrl: imageUrl,
+    updatedOn: now,
+    fileSize: 0, // Webflow will update
+    localizedSettings: {},
+  };
+}
+
+/**
  * Compiles HTML string into Webflow nodes
  * @param htmlString - Raw HTML string to parse
  * @param classToIdMap - Map of class names to Webflow style UUIDs
@@ -99,13 +147,15 @@ export function compileHTMLToNodes(
 
   const allNodes: WebflowNode[] = [];
   const rootNodeIds: string[] = [];
+  const assets: WebflowAsset[] = [];
+  const assetMap = new Map<string, string>(); // URL -> asset ID mapping
 
   // Extract content elements (skip document structure)
   const contentElements = extractContentElements(dom);
 
   // Process each content element
   for (const element of contentElements) {
-    const nodeId = processElement(element, classToIdMap, allNodes);
+    const nodeId = processElement(element, classToIdMap, allNodes, assets, assetMap);
     if (nodeId) {
       rootNodeIds.push(nodeId);
     }
@@ -114,6 +164,7 @@ export function compileHTMLToNodes(
   return {
     nodes: allNodes,
     rootNodeIds,
+    assets,
   };
 }
 
@@ -169,6 +220,8 @@ function extractContentElements(dom: any): Element[] {
  * @param element - DOM element to process
  * @param classToIdMap - Map of class names to style UUIDs
  * @param allNodes - Array to accumulate all nodes
+ * @param assets - Array to accumulate asset metadata
+ * @param assetMap - Map of image URLs to asset IDs
  * @param insideForm - Whether this element is inside a form
  * @returns The UUID of the created node
  */
@@ -176,6 +229,8 @@ function processElement(
   element: Element,
   classToIdMap: Map<string, string>,
   allNodes: WebflowNode[],
+  assets: WebflowAsset[],
+  assetMap: Map<string, string>,
   insideForm: boolean = false
 ): string {
   const nodeId = uuidv4();
@@ -235,7 +290,7 @@ function processElement(
     ];
 
     // Determine which fields to add based on type
-    const needsTextAndTag = ["Block", "Section", "Container"].includes(type);
+    const needsTextAndTag = ["Block", "Container"].includes(type);
     const needsTagOnly = ["Heading"].includes(type);
     const needsNeither = ["Paragraph", "Link", "Image", ...formTypes].includes(type);
 
@@ -251,7 +306,7 @@ function processElement(
 
     // Add type-specific data BEFORE common fields (critical for Webflow!)
     // Order must be: attr, xattr, [text, tag], [type-specific], devlink, displayName, search, visibility
-    const typeSpecificData = getTypeSpecificData(element, tag, type);
+    const typeSpecificData = getTypeSpecificData(element, tag, type, assets, assetMap);
     Object.assign(dataObject, typeSpecificData);
 
     // Add remaining common fields in correct order
@@ -292,7 +347,7 @@ function processElement(
   for (const child of element.children) {
     if (child instanceof Element) {
       // Recursively process child elements, passing form context
-      const childId = processElement(child, classToIdMap, allNodes, childrenInsideForm);
+      const childId = processElement(child, classToIdMap, allNodes, assets, assetMap, childrenInsideForm);
       childIds.push(childId);
     } else if (child instanceof Text) {
       // Process text nodes
@@ -477,7 +532,9 @@ function extractAttributes(
 function getTypeSpecificData(
   element: Element,
   tag: string,
-  type: WebflowNodeType
+  type: WebflowNodeType,
+  assets: WebflowAsset[],
+  assetMap: Map<string, string>
 ): Partial<WebflowElementNode["data"]> {
   const data: any = {};
 
@@ -495,8 +552,25 @@ function getTypeSpecificData(
       break;
 
     case "Image":
+      // Generate or retrieve asset for this image
+      const imageSrc = element.attribs["src"] || "";
+      let assetId = "";
+
+      if (imageSrc) {
+        // Check if we already have an asset for this URL
+        if (assetMap.has(imageSrc)) {
+          assetId = assetMap.get(imageSrc)!;
+        } else {
+          // Create new asset
+          const asset = createAssetFromImageUrl(imageSrc);
+          assetId = asset._id;
+          assets.push(asset);
+          assetMap.set(imageSrc, assetId);
+        }
+      }
+
       data.img = {
-        id: "", // Would need to be mapped to asset ID
+        id: assetId,
       };
       data.srcsetDisabled = false;
       data.sizes = [];
@@ -819,6 +893,64 @@ export function extractJavaScriptFromHTML(htmlString: string): string {
   }
 
   return scriptParts.join('\n\n');
+}
+
+/**
+ * Extracts CSS from <style> tags in HTML
+ * @param htmlString - HTML string to extract CSS from
+ * @returns Extracted CSS content as a string
+ */
+export function extractCSSFromHTML(htmlString: string): string {
+  const cssParts: string[] = [];
+
+  // Match <style> tags
+  const styleRegex = /<style([^>]*)>([\s\S]*?)<\/style>/gi;
+  let match;
+
+  while ((match = styleRegex.exec(htmlString)) !== null) {
+    const cssContent = match[2].trim();
+
+    // Add CSS content if present
+    if (cssContent.length > 0) {
+      cssParts.push(cssContent);
+    }
+  }
+
+  return cssParts.join('\n\n');
+}
+
+/**
+ * Extracts font link tags from HTML (Google Fonts, etc.)
+ * @param htmlString - HTML string to extract font links from
+ * @returns Array of font link tags as HTML strings
+ */
+export function extractFontLinksFromHTML(htmlString: string): string[] {
+  const fontLinks: string[] = [];
+
+  // Match <link> tags that reference fonts (Google Fonts, preconnect, etc.)
+  const linkRegex = /<link([^>]+)>/gi;
+  let match;
+
+  while ((match = linkRegex.exec(htmlString)) !== null) {
+    const linkTag = match[0];
+    const attributes = match[1];
+
+    // Check if this is a font-related link
+    // Look for: rel="stylesheet" with href to fonts.googleapis.com, or rel="preconnect" to fonts
+    const isFontStylesheet =
+      attributes.includes('rel="stylesheet"') &&
+      attributes.includes('fonts.googleapis.com');
+
+    const isPreconnect =
+      attributes.includes('rel="preconnect"') &&
+      (attributes.includes('fonts.googleapis.com') || attributes.includes('fonts.gstatic.com'));
+
+    if (isFontStylesheet || isPreconnect) {
+      fontLinks.push(linkTag);
+    }
+  }
+
+  return fontLinks;
 }
 
 /**

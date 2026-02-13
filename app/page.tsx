@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { parseCSSToWebflow, extractClassNamesFromCSS } from "@/lib/css-parser";
-import { compileHTMLToNodes, splitIntoChunks, createHTMLEmbedNode, extractJavaScriptFromHTML, type WebflowChunk } from "@/lib/html-parser";
+import { compileHTMLToNodes, splitIntoChunks, createHTMLEmbedNode, extractJavaScriptFromHTML, extractCSSFromHTML, extractFontLinksFromHTML, type WebflowChunk } from "@/lib/html-parser";
 import { copyToWebflow, requestClipboardPermission } from "@/lib/clipboard";
 import { copyToWebflowCustom } from "@/lib/clipboard-custom";
 import type { WebflowClipboardData } from "@/types/webflow";
@@ -70,12 +70,50 @@ export default function ConverterPage() {
   const [webflowData, setWebflowData] = useState<WebflowClipboardData | null>(null);
   const [chunks, setChunks] = useState<WebflowChunk[]>([]);
   const [allStyles, setAllStyles] = useState<any[]>([]);
+  const [allAssets, setAllAssets] = useState<any[]>([]);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [copiedChunks, setCopiedChunks] = useState<Set<number>>(new Set());
   const [customCode, setCustomCode] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [copyStatus, setCopyStatus] = useState<"idle" | "copying" | "success" | "error">("idle");
   const [copyMessage, setCopyMessage] = useState<string>("");
   const [customCodeCopied, setCustomCodeCopied] = useState<boolean>(false);
+  const [downloadingAll, setDownloadingAll] = useState<boolean>(false);
+  const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null);
+
+  const downloadImage = async (url: string, index: number) => {
+    try {
+      setDownloadingIndex(index);
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const fileName = url.split('/').pop()?.split('?')[0] || `image-${index + 1}.png`;
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      // Fallback: open in new tab if fetch fails (CORS)
+      window.open(url, '_blank');
+    } finally {
+      setDownloadingIndex(null);
+    }
+  };
+
+  const downloadAllImages = async () => {
+    setDownloadingAll(true);
+    for (let i = 0; i < imageUrls.length; i++) {
+      await downloadImage(imageUrls[i], i);
+      // Small delay between downloads to avoid browser blocking
+      if (i < imageUrls.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 600));
+      }
+    }
+    setDownloadingAll(false);
+  };
 
   const handleConvertAndCopy = async () => {
     setCopyStatus("copying");
@@ -84,17 +122,29 @@ export default function ConverterPage() {
     setCopiedChunks(new Set());
 
     try {
-      // Extract class names from CSS
-      const classNames = extractClassNamesFromCSS(css);
+      // Extract CSS from HTML <style> tags
+      const htmlCSS = extractCSSFromHTML(html);
+
+      // Combine CSS from textarea and HTML
+      const combinedCSS = [
+        htmlCSS.trim(),
+        css.trim()
+      ].filter(s => s.length > 0).join('\n\n');
+
+      // Extract class names from combined CSS
+      const classNames = extractClassNamesFromCSS(combinedCSS);
 
       // Parse CSS and generate UUIDs (now also extracts advanced CSS)
-      const { classToIdMap, styles, customCSS } = parseCSSToWebflow(css, classNames);
+      const { classToIdMap, styles, customCSS } = parseCSSToWebflow(combinedCSS, classNames);
 
-      // Compile HTML to nodes
-      let { nodes, rootNodeIds } = compileHTMLToNodes(html, classToIdMap);
+      // Compile HTML to nodes (includes asset metadata for images)
+      let { nodes, rootNodeIds, assets } = compileHTMLToNodes(html, classToIdMap);
 
       // Extract JavaScript from HTML <script> tags
       const htmlJS = extractJavaScriptFromHTML(html);
+
+      // Extract font links from HTML <head>
+      const fontLinks = extractFontLinksFromHTML(html);
 
       // Combine JavaScript from textarea and HTML
       const combinedJS = [
@@ -105,9 +155,14 @@ export default function ConverterPage() {
       // Store custom code for display (don't auto-add to avoid Webflow crashes)
       const hasCustomCSS = customCSS && customCSS.trim().length > 0;
       const hasCustomJS = combinedJS.length > 0;
+      const hasFontLinks = fontLinks.length > 0;
       let customCodeHTML = "";
 
-      if (hasCustomCSS || hasCustomJS) {
+      if (hasCustomCSS || hasCustomJS || hasFontLinks) {
+        // Add font links first (they go in <head>)
+        if (hasFontLinks) {
+          customCodeHTML += fontLinks.join('\n') + '\n\n';
+        }
         if (hasCustomCSS) {
           customCodeHTML += `<style>\n${customCSS}\n</style>\n`;
         }
@@ -134,8 +189,13 @@ export default function ConverterPage() {
         setCustomCode("");
       }
 
-      // Store all styles for chunks
+      // Store all styles and assets for chunks
       setAllStyles(styles);
+      setAllAssets(assets);
+
+      // Extract image URLs from assets for manual upload
+      const extractedImageUrls = assets.map(asset => asset.cdnUrl);
+      setImageUrls(extractedImageUrls);
 
       // Split into chunks if HTML is large
       const nodeChunks = splitIntoChunks(nodes, rootNodeIds, 25);
@@ -143,12 +203,16 @@ export default function ConverterPage() {
 
       // If only one chunk (small HTML), copy immediately
       if (nodeChunks.length === 1) {
+        // Log assets for debugging
+        console.log('[Converter] Image assets generated:', assets);
+        console.log('[Converter] Image nodes:', nodeChunks[0].nodes.filter((n: any) => n.type === 'Image'));
+
         const data: WebflowClipboardData = {
           type: "@webflow/XscpData",
           payload: {
             nodes: nodeChunks[0].nodes,
             styles,
-            assets: [],
+            assets: assets, // Include image assets for automatic upload
             ix1: [],
             ix2: {
               interactions: [],
@@ -211,7 +275,7 @@ export default function ConverterPage() {
         payload: {
           nodes: chunk.nodes,
           styles: allStyles, // Include ALL styles in every chunk
-          assets: [],
+          assets: allAssets, // Include ALL assets in every chunk for image uploads
           ix1: [],
           ix2: {
             interactions: [],
@@ -710,6 +774,102 @@ export default function ConverterPage() {
                 <p className="text-sm text-yellow-800">
                   <strong>How to add:</strong> In Webflow, drag an <strong>HTML Embed</strong> element to your page, paste this code, and save. The media queries and JavaScript will work on your published site.
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* Image Upload Instructions */}
+          {imageUrls.length > 0 && (
+            <div className="mb-8 bg-gradient-to-br from-orange-50 to-yellow-50 rounded-xl p-6 border-2 border-orange-200 shadow-lg">
+              {/* Header row with title + Download All button */}
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Images Found ({imageUrls.length})
+                </h3>
+                <button
+                  onClick={downloadAllImages}
+                  disabled={downloadingAll}
+                  className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-400 text-white text-sm font-semibold rounded-lg transition-colors"
+                >
+                  {downloadingAll ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                      </svg>
+                      Downloading...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Download All
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <p className="text-gray-600 mb-4 text-sm">
+                Your HTML contains <strong>{imageUrls.length} image{imageUrls.length > 1 ? 's' : ''}</strong>. Download them and upload to Webflow's Asset Manager for images to work on your published site.
+              </p>
+
+              {/* Instructions */}
+              <div className="bg-white rounded-lg p-4 mb-4 border border-orange-200">
+                <h4 className="font-semibold text-gray-900 mb-2">📋 How to Upload Images:</h4>
+                <ol className="text-sm text-gray-700 space-y-2 ml-5 list-decimal">
+                  <li>Click <strong>"Download All"</strong> above to download all images at once</li>
+                  <li>In Webflow Designer, open the <strong>Assets panel</strong> (left sidebar)</li>
+                  <li>Click the <strong>upload icon</strong> and select all downloaded images</li>
+                  <li>After pasting your code, click on each image element</li>
+                  <li>In the right panel, click <strong>"Choose Image"</strong> and select from your uploaded assets</li>
+                </ol>
+              </div>
+
+              {/* Image Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {imageUrls.map((url, index) => (
+                  <div key={index} className="bg-white rounded-lg p-3 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="aspect-square bg-gray-100 rounded-lg mb-2 overflow-hidden flex items-center justify-center">
+                      <img
+                        src={url}
+                        alt={`Image ${index + 1}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect width="100" height="100" fill="%23e5e7eb"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14" fill="%239ca3af"%3EImage%3C/text%3E%3C/svg%3E';
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mb-2 truncate" title={url}>
+                      {url.split('/').pop()?.split('?')[0]?.substring(0, 20) || `image-${index + 1}`}
+                    </p>
+                    <button
+                      onClick={() => downloadImage(url, index)}
+                      disabled={downloadingIndex === index || downloadingAll}
+                      className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-400 text-white text-xs font-medium rounded transition-colors"
+                    >
+                      {downloadingIndex === index ? (
+                        <>
+                          <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                          </svg>
+                          Downloading...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          Download
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           )}
